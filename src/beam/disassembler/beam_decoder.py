@@ -22,6 +22,7 @@ class BeamDecoder:
         code = beam_reader.get_code()
         imports = beam_reader.get_imports()
         exports = beam_reader.get_exports()
+        lambdas = beam_reader.get_lambdas()
         locals_ = beam_reader.get_locals()
         literals = beam_reader.get_literals()
         
@@ -29,9 +30,11 @@ class BeamDecoder:
         p_imports = self.decode_imports(imports, atoms)
         (p_exports, exports_labels) = self.decode_exports(exports, atoms)
         (p_locals, locals_labels) = self.decode_locals(locals_, atoms)
+        lambda_labels = self.decode_lambdas(lambdas, atoms)
         p_literals = self.decode_literals(literals)
         labels = dict(exports_labels.items() + locals_labels.items())
-        p_code = self.decode_code(code, atoms, labels, p_imports)
+        #print labels
+        p_code = self.decode_code(code, atoms, labels, lambda_labels, p_imports)
         
         self.atoms = p_atoms
         self.imports = p_imports
@@ -40,14 +43,24 @@ class BeamDecoder:
         self.literals = p_literals
         self.code = p_code
         
-    def decode_code(self, code, atoms, labels, imports):
+    def decode_code(self, code, atoms, labels, lambda_labels, imports):
         result = list()
         for instr in code:
             pos = 0
             params = list()
+            hof = False
+            en = False
             for param in instr['params']:
-                dp = self.decode_param(instr['opname'], param, pos, atoms, labels, imports)
-                params.append(dp)
+                dp = self.decode_param(instr['opname'], param, pos, atoms, labels,
+                                       lambda_labels, imports, hof, en)
+                hof = False
+                en = False
+                if dp == 'HigherOrderFun':
+                    hof = True
+                elif dp == 'extended_numbering':
+                    en = True
+                else:
+                    params.append(dp)
                 pos += 1
             result.append((instr['opname'], params))
         return self.split_functions(result)
@@ -72,7 +85,11 @@ class BeamDecoder:
         code.append(instrs[start:])
         return code
         
-    def decode_param(self, opname, p, pos, atoms, labels, imports):
+    def decode_param(self, opname, p, pos, atoms, labels, lambda_labels, imports, hof, en):
+        if hof:
+            return ('atom', atoms[p - 1])
+        if en:
+            return p
         if p == 2:
             return ('nil', None)
         elif p == 71:
@@ -81,6 +98,10 @@ class BeamDecoder:
         elif p % 16 == 0:
             if opname.startswith('call') and pos == 1:
                 return ('extfunc', imports[p / 16])
+            elif opname == 'make_fun2':
+                #return 'lambda n.%d' % (p / 16)
+                return (atoms[0], lambda_labels[p / 16])
+                ###
             else:
                 return p / 16
         elif p % 16 == 1:
@@ -96,6 +117,11 @@ class BeamDecoder:
                 return (atoms[0], labels[(p - 5) / 16])
             else:
                 return ('f', (p - 5) / 16)
+        elif p == 10:
+            return 'HigherOrderFun'
+            
+        elif p == 8:
+            return 'extended_numbering'
     
     def decode_imports(self, imports, atoms):
         return ['%s:%s/%s' % (atoms[imp[0] - 1], atoms[imp[1] - 1], imp[2]) for imp in imports]
@@ -118,6 +144,13 @@ class BeamDecoder:
             locals_res.append(val)
             labels[loc[2]] = val
         return (locals_res, labels)
+
+    def decode_lambdas(self, lambdas, atoms):
+        lambda_labels = dict()
+        for lam in lambdas:
+            val = '%s/%s' % (atoms[lam[0] - 1], lam[1])
+            lambda_labels[lam[3]] = val
+        return lambda_labels
 
     def decode_literals(self, literals):
         #TODO

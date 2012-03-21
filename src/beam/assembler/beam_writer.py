@@ -28,6 +28,7 @@ class BeamWriter:
         self.strT = []
         self.impT = []
         self.expT = []
+        self.funT = []
         self.litT = []
         self.locT = []
         self.attr = []
@@ -41,15 +42,18 @@ class BeamWriter:
         strT = self.get_strT()
         impT = self.get_impT()
         expT = self.get_expT()
+        funT = self.get_funT()
         litT = self.get_litT()
         locT = self.get_locT()
         attr = self.get_attr()
         cInf = self.get_cInf()
         abst = self.get_abst()
         line = self.get_line()
-        header = self.get_header(atom, code, strT, impT, expT, litT, locT, attr, cInf, abst, line)
+        header = self.get_header(atom, code, strT, impT, expT, funT, litT, locT, attr, cInf,
+                                 abst, line)
         
-        binary = header + atom + code + strT + impT + expT + litT + locT + attr + cInf + abst + line
+        binary = header + atom + code + strT + impT + expT + funT + litT + locT + attr + \
+                 cInf + abst + line
         
         print 'Header:'
         print ByteToHex(header)
@@ -63,6 +67,8 @@ class BeamWriter:
         print ByteToHex(impT)
         print 'Export Table:'
         print ByteToHex(expT)
+        print 'Lambda Table:'
+        print ByteToHex(funT)
         print 'Literal Table:'
         print ByteToHex(litT)
         print 'Local Function Table:'
@@ -144,6 +150,14 @@ class BeamWriter:
         r = pack_string('ExpT') + pack_int(len(el) + 4) + pack_int(len(self.expT)) + el
         return r
     
+    def get_funT(self):
+        fl = str()
+        for fun in self.funT:
+            for p in fun:
+                fl += pack_int(p)
+        r = pack_string('FunT') + pack_int(len(fl) + 4) + pack_int(len(self.funT)) + fl
+        return r
+    
     def get_litT(self):
         # id, size, uncompressed_size, compresso(n_literals, foreach(size, external_format)), padding
         
@@ -202,7 +216,8 @@ class BeamWriter:
         
     def get_line(self):
         #00 00 00 00 00 00 00 00 00 00 00 08 00 00 00 03 00 00 00 00 41 61 71
-        data = HexToByte('00 00 00 00 00 00 00 00 00 00 00 09 00 00 00 05 00 00 00 00 41 51 81 A1 B1')
+        #data = HexToByte('00 00 00 00 00 00 00 00 00 00 00 09 00 00 00 05 00 00 00 00 41 51 81 A1 B1')
+        data = HexToByte('4C 69 6E 65 00 00 00 22 00 00 00 00 00 00 00 00 00 00 00 11 00 00 00 0A 00 00 00 00 41 81 91 A1 C1 D1 09 11 09 12 09 14 09 15 00 00')
         r = pack_string('Line') + pack_int(len(data)) + data
         # add padding
         r = self.add_padding(r)

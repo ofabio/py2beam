@@ -8,15 +8,15 @@ from beam_writer import BeamWriter
 from external_term_parser import *
 
 class BeamEncoder():
-    def __init__(self, atoms, code, imports, exports, locals_, literals, attributes, compile_info):
+    def __init__(self, atoms, code, imports, exports, literals, locals_, attributes, compile_info):
         self.load_opcodes()
         self.atoms = atoms
         self.code = code
         self.imports = imports
         self.exports = exports
+        self.literals = literals
         self.locals = locals_
         self.labels = dict()
-        self.literals = literals
         self.attributes = attributes
         self.compile_info = compile_info
         self.beam_writer = BeamWriter()
@@ -32,12 +32,14 @@ class BeamEncoder():
 
     def make_binary(self):
         self.assign_labels()
+        self.assign_lambda_indexes()
         atoms = self.atoms
         imports = self.parse_imports(self.imports)
         exports = self.parse_exports(self.exports)
+        lambdas = self.parse_lambdas(self.locals)
         code = self.parse_code(self.code)
-        locals_ = self.parse_locals(self.locals)
         literals = self.literals
+        locals_ = self.parse_locals(self.locals)
         attributes = self.attributes
         compile_info = self.compile_info
 
@@ -46,8 +48,9 @@ class BeamEncoder():
         beam_writer.impT = imports
         beam_writer.expT = exports
         beam_writer.code = code
-        beam_writer.locT = locals_
+        beam_writer.funT = lambdas
         beam_writer.litT = literals
+        beam_writer.locT = locals_
         beam_writer.attr = attributes
         beam_writer.cInf = compile_info
 
@@ -59,25 +62,18 @@ class BeamEncoder():
         # locals_ = ['tail_fac/2']
         exports = self.exports
         locals_ = self.locals
-        
-        #label = 0
-        #for atom in self.atoms:
-        #    some_match = False
-        #    for arity in range(10):
-        #        searching = "%s/%d" % (atom, arity)
-        #        if searching in exports or searching in locals_:
-        #            label += 2
-        #            self.labels[searching] = label
-        #            some_match = True
-        #    if some_match:
-        #        label += 1
+
         for fun in self.code:
             for instr in fun:
                 if instr[0] == 'func_info':
                     info = instr[1]
+                    if info[1] == None:
+                        # si tratta di una funzione di ordine superiore
+                        continue
                     self.labels['%s/%d' % (info[1][1], info[2])] = fun[fun.index(instr) + 1][1][0]
-                
-        #print self.labels
+        
+    def assign_lambda_indexes(self):
+        self.lambda_indexes = [l for l in self.locals if l.startswith('-')]
 
     def write(self, file_name):
         self.beam_writer.write(file_name)
@@ -100,23 +96,36 @@ class BeamEncoder():
         #label = 0
         for fun in exports:
             #label += 2
-            s0 = fun.split('/')
+            s0 = fun.rsplit('/', 1)
             result.append((self.atoms.index(s0[0]) + 1, int(s0[1]), self.labels[fun]))
             #self.labeled_exports[fun] = label
         return result
 
+    def parse_lambdas(self, locals_):
+        # ['-dict_list_merge/1-fun-0-/2']
+        # [21, 2, 18, 0, 0, '\x01\x08<\xec']
+        result = list()
+        lambdas = [l for l in locals_ if l.startswith('-')]
+        for lam in lambdas:
+            s0 = lam.rsplit('/', 1)
+            result.append((self.atoms.index(s0[0]) + 1, int(s0[1]), self.labels[lam],
+                           self.lambda_indexes.index(lam), 0, 17317100))
+        #print result
+        return result
+
     def parse_locals(self, locals_):
-        # ['tail_fac,2']
+        # ['tail_fac/2']
         # [(2, 2, 4)]
         result = list()
         for fun in locals_:
-            s0 = fun.split('/')
+            s0 = fun.rsplit('/', 1)
             result.append((self.atoms.index(s0[0]) + 1, int(s0[1]), self.labels[fun]))
         return result
 
     def parse_code(self, code):
         setattr(self, self.atoms[0], self.module_name)
         fun_r = list()
+        #print code
         for fun in code:
             instr_r = list()
             for instr in fun:
@@ -128,18 +137,30 @@ class BeamEncoder():
                     else:
                         type_ = param[0]
                         val = param[1]
-                    param_r.append(getattr(self, type_)(val))
+                    p = getattr(self, type_)(val)
+                    if type(p) == tuple:
+                        param_r += p
+                    else:
+                        param_r.append(p)
+                    #print param_r
+                        
                 instr_r.append((self.opcodes[instr[0]], param_r))
+                #print instr_r
             fun_r.append(instr_r)
             
             # aggiungo un int_code_end all'ultima funzione
         fun_r[-1].append((3, []))
+        #print fun_r
         return fun_r
 
     def pure(self, n):
+        if n > 15:
+            return (8, n)
         return n * 16
 
     def atom(self, atom):
+        if atom.startswith('-'):
+            return (10, self.atoms.index(atom) + 1)
         return (self.atoms.index(atom) + 1) * 16 + 2
 
     def x(self, n):
@@ -155,7 +176,10 @@ class BeamEncoder():
         return self.pure(self.imports.index(fun))
 
     def module_name(self, fun):
-        return self.labels[fun] * 16 + 5
+        if fun.startswith('-'):
+            return self.lambda_indexes.index(fun) * 16
+        else:
+            return self.labels[fun] * 16 + 5
 
     def integer(self, n):
         return n * 16 + 1
@@ -174,6 +198,7 @@ if __name__ == '__main__':
     imports = ['io:format/2', 'erlang:get_module_info/1', 'erlang:get_module_info/2']
     exports = ['for/1']
     locals_ = []
+    lambdas = []
     #literals = [ExternalTerm(String('yes')), ExternalTerm(List(List(Integer(5000), Tuple(Integer(1), Integer(2), Integer(3))))), ExternalTerm(String('~w~n'))]
     literals = [ExternalTerm(String('~w~n'))]
     attributes = ExternalTerm(List(Tuple(Atom('vsn'), List(Big(10355834843103504983582285655618377565L)))))
@@ -212,6 +237,7 @@ if __name__ == '__main__':
             ],
     ]
 
-    te = BeamEncoder(atoms, code, imports, exports, locals_, literals, attributes, compile_info)
+    te = BeamEncoder(atoms, code, imports, exports, literals, locals_,
+                     attributes, compile_info)
     te.make_binary()
     te.write('prova.beam')

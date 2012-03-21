@@ -49,14 +49,16 @@ class BeamReader:
 
     def get_exports(self):
         return self.beam_parsed['ExpT']['exports']
-
-    def get_locals(self):
-        return self.beam_parsed['LocT']['functions']
+    
+    def get_lambdas(self):
+        return self.beam_parsed['FunT']['lambdas']
 
     def get_literals(self):
         pass
         #return self.beam_parsed['LitT']['code']
         
+    def get_locals(self):
+        return self.beam_parsed['LocT']['functions']
     
     # parse methods
     
@@ -67,6 +69,7 @@ class BeamReader:
         beam_parsed["StrT"] = self.parse_string()
         beam_parsed["ImpT"] = self.parse_iemport('import')
         beam_parsed["ExpT"] = self.parse_iemport('export')
+        beam_parsed["FunT"] = self.parse_lambda()
         #beam_parsed["LitT"] = self.parse_literal()
         beam_parsed["LocT"] = self.parse_function()
         beam_parsed["Attr"] = self.parse_attribute()
@@ -115,6 +118,7 @@ class BeamReader:
         n_functions = self.read_int(gen)
 
         # get instructions
+        n_label = 0
         len_code = size - subsize - 4
         n_letti = 0
         commands = list()
@@ -122,9 +126,23 @@ class BeamReader:
             opcode = self.read_byte_value(gen)
             n_letti += 1
             params = list()
+            if opcode == 0:
+                break
+            #print opcode
+            
             for i in range(self.commands[opcode]['n_params']):
                 params.append(self.read_byte_value(gen))
                 n_letti += 1
+            # se l'opcode è una def di funzione di ordine superiore:
+            if opcode == 2 and params[-2] == 10:
+                params.append(self.read_byte_value(gen))
+                n_letti += 1
+            if opcode == 1:
+                n_label += 1
+                if n_label > 15:
+                    params.append(self.read_byte_value(gen))
+                    n_letti += 1
+            #print params
             #params = self.resolve_pointer(opcode, params)
             commands.append({'opname': self.commands[opcode]['opname'],
                              'params': params})
@@ -223,6 +241,35 @@ class BeamReader:
             iemport_chunk['exports'] = iemports
             
         return iemport_chunk
+        
+    def parse_lambda(self):
+        # start from "FunT"
+        lambda_chunk = dict()
+        b = self.beam
+        gen = self.gen_byte(b[b.find("\x46\x75\x6E\x54"):])
+        
+        try:
+            id_ = self.read_word(gen)
+        except StopIteration:
+            return None
+        size = self.read_int(gen)
+        n_entry = self.read_int(gen)
+        
+        lambdas = list()
+        for i in range(n_entry):
+            lambdas.append([self.read_int(gen),
+                            self.read_int(gen),
+                            self.read_int(gen),
+                            self.read_int(gen),
+                            self.read_int(gen),
+                            self.read_int(gen)])
+        if self.verbose:
+            lambda_chunk['id'] = id_
+            lambda_chunk['size'] = size
+            lambda_chunk['n_entry'] = n_entry
+        lambda_chunk['lambdas'] = lambdas
+        
+        return lambda_chunk
         
     def parse_literal(self):
         # LilT(4), size_chunk(4), size_uncompressed(4), 
@@ -369,7 +416,13 @@ class BeamReader:
         print '----- EXPORTS -----'
         for exp in self.beam_parsed['ExpT']['exports']:
             print "function: %s  arity: %s  label: %s" % (tuple(exp))
-            
+    
+    def print_lambda(self):
+        print '----- LAMBDA -----'
+        print self.beam_parsed['FunT']
+        #for exp in self.beam_parsed['FunT']['lambdas']:
+        #    print "function: %s  arity: %s  label: %s" % (tuple(exp))
+    
     def print_literal(self):
         print '----- LITERALS -----'
         for literal in self.beam_parsed['LitT']['literals']:
@@ -397,6 +450,8 @@ class BeamReader:
         self.print_import()
         print ''
         self.print_export()
+        print ''
+        self.print_lambda()
         print ''
         #self.print_literal()
         #print ''
