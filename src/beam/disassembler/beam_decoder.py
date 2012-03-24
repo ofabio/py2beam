@@ -30,7 +30,10 @@ class BeamDecoder:
         p_imports = self.decode_imports(imports, atoms)
         (p_exports, exports_labels) = self.decode_exports(exports, atoms)
         (p_locals, locals_labels) = self.decode_locals(locals_, atoms)
-        lambda_labels = self.decode_lambdas(lambdas, atoms)
+        if lambdas:
+            lambda_labels = self.decode_lambdas(lambdas, atoms)
+        else:
+            lambda_labels = []
         p_literals = self.decode_literals(literals)
         labels = dict(exports_labels.items() + locals_labels.items())
         #print labels
@@ -47,49 +50,34 @@ class BeamDecoder:
         result = list()
         for instr in code:
             pos = 0
+            mem = None
             params = list()
-            hof = False
-            en = False
             for param in instr['params']:
+                if param in (8, 10, 13):
+                    mem = param
+                    continue
                 dp = self.decode_param(instr['opname'], param, pos, atoms, labels,
-                                       lambda_labels, imports, hof, en)
-                hof = False
-                en = False
-                if dp == 'HigherOrderFun':
-                    hof = True
-                elif dp == 'extended_numbering':
-                    en = True
-                else:
-                    params.append(dp)
+                                       lambda_labels, imports, mem)
+                mem = None
+                params.append(dp)
                 pos += 1
             result.append((instr['opname'], params))
         return self.split_functions(result)
         
-    def split_functions(self, instrs):
-        instrs.pop(-1)
-        code = list()
-        j1 = False
-        start = 0
-        for instr in instrs:
-            opname = instr[0]
-            if opname == 'func_info':
-                if j1 == False:
-                    j1 = True
-                else:
-                    pos = instrs.index(instr)
-                    for i in range(2):
-                        if instrs[pos - 1][0] in ['line', 'label']:
-                            pos -= 1
-                    code.append(instrs[start:pos])
-                    start = pos
-        code.append(instrs[start:])
-        return code
-        
-    def decode_param(self, opname, p, pos, atoms, labels, lambda_labels, imports, hof, en):
-        if hof:
-            return ('atom', atoms[p - 1])
-        if en:
-            return p
+    def decode_param(self, opname, p, pos, atoms, labels, lambda_labels, imports, mem):
+        if mem:
+            if mem == 10:
+                # HigherOrderFun
+                return ('atom', atoms[p - 1])
+                
+            elif mem == 8:
+                # extended_numbering for label
+                return p
+                
+            elif mem == 13:
+                # extended_numbering for local call
+                return (atoms[0], labels[p])
+
         if p == 2:
             return ('nil', None)
         elif p == 71:
@@ -117,12 +105,28 @@ class BeamDecoder:
                 return (atoms[0], labels[(p - 5) / 16])
             else:
                 return ('f', (p - 5) / 16)
-        elif p == 10:
-            return 'HigherOrderFun'
-            
-        elif p == 8:
-            return 'extended_numbering'
+                
     
+    def split_functions(self, instrs):
+        instrs.pop(-1)
+        code = list()
+        j1 = False
+        start = 0
+        for instr in instrs:
+            opname = instr[0]
+            if opname == 'func_info':
+                if j1 == False:
+                    j1 = True
+                else:
+                    pos = instrs.index(instr)
+                    for i in range(2):
+                        if instrs[pos - 1][0] in ['line', 'label']:
+                            pos -= 1
+                    code.append(instrs[start:pos])
+                    start = pos
+        code.append(instrs[start:])
+        return code
+        
     def decode_imports(self, imports, atoms):
         return ['%s:%s/%s' % (atoms[imp[0] - 1], atoms[imp[1] - 1], imp[2]) for imp in imports]
 

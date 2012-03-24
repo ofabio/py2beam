@@ -51,6 +51,8 @@ class BeamReader:
         return self.beam_parsed['ExpT']['exports']
     
     def get_lambdas(self):
+        if self.beam_parsed['FunT'] == None:
+            return None
         return self.beam_parsed['FunT']['lambdas']
 
     def get_literals(self):
@@ -118,7 +120,7 @@ class BeamReader:
         n_functions = self.read_int(gen)
 
         # get instructions
-        n_label = 0
+        #n_label = 0
         len_code = size - subsize - 4
         n_letti = 0
         commands = list()
@@ -130,18 +132,25 @@ class BeamReader:
                 break
             #print opcode
             
+            if not opcode in self.commands:
+                print opcode
+                continue
             for i in range(self.commands[opcode]['n_params']):
-                params.append(self.read_byte_value(gen))
+                l = self.read_byte_value(gen)
+                params.append(l)
                 n_letti += 1
+                if l in (8, 13):
+                    params.append(self.read_byte_value(gen))
+                    n_letti += 1
             # se l'opcode è una def di funzione di ordine superiore:
             if opcode == 2 and params[-2] == 10:
                 params.append(self.read_byte_value(gen))
                 n_letti += 1
-            if opcode == 1:
-                n_label += 1
-                if n_label > 15:
-                    params.append(self.read_byte_value(gen))
-                    n_letti += 1
+            #if opcode == 1:
+                #n_label += 1
+                #if n_label > 15:
+            #        params.append(self.read_byte_value(gen))
+            #        n_letti += 1
             #print params
             #params = self.resolve_pointer(opcode, params)
             commands.append({'opname': self.commands[opcode]['opname'],

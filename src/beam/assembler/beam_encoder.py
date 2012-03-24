@@ -179,7 +179,12 @@ class BeamEncoder():
         if fun.startswith('-'):
             return self.lambda_indexes.index(fun) * 16
         else:
-            return self.labels[fun] * 16 + 5
+            #return self.labels[fun] * 16 + 5
+            n = self.labels[fun]
+            if n > 15:
+                return (13, n)
+            else:
+                return n * 16 + 5
 
     def integer(self, n):
         return n * 16 + 1
