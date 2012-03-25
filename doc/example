@@ -1,0 +1,24 @@
+EXAMPLE
+
+# python #
+
+t = "ciao"
+def a():
+    print t
+a()
+
+-------
+
+# beam logic equivalent #
+
+def module():
+    context = [{}]
+    context[0]['t'] = 'ciao'
+    context[0]['a'] = ['__f1', 0]
+    merge = reduce(lambda x, y: dict(x.items()+y.items()), context)
+    x = merge['a']
+    globals()[x[0]](context[:x[1] + 1])
+
+def __f1(context):
+     merge = reduce(lambda x, y: dict(x.items()+y.items()), context)
+    print merge['t']

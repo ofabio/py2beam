@@ -159,9 +159,11 @@ class BeamEncoder():
         return n * 16
 
     def atom(self, atom):
-        if atom.startswith('-'):
-            return (10, self.atoms.index(atom) + 1)
-        return (self.atoms.index(atom) + 1) * 16 + 2
+        #if atom.startswith('-'):
+        n_atom = self.atoms.index(atom)
+        if  n_atom > 15:
+            return (10, n_atom + 1)
+        return (n_atom + 1) * 16 + 2
 
     def x(self, n):
         return n * 16 + 3
