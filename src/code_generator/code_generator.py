@@ -20,10 +20,13 @@ print 'output would be...'
 
 def a():
     print 1
-for i in range(0, 2):
-    a()
-    def a():
-        print 2
+    c = 5
+    d = 8
+    b(c, d)
+def b(c, d):
+    print c
+    print d
+a()
     
 print '---'
 
@@ -44,9 +47,15 @@ class CodeGenerator:
         #                        ])
 
         tree = Module(output, [
-                                Def(output, 'a', [], [Print(1),]), 
-                                Range(0, 2),
-                                For(output, 'i', [Call('a', []), Def(output, 'a', [], [Print(2),]),]),
+                                Def(output, 'a', [], [
+                                    Print(1),
+                                    Assign('c', 5), 
+                                    Assign('d', 8), 
+                                    Call('b', ['c', 'd'])]), 
+                                Def(output, 'b', ['c', 'd'], [
+                                    Print('c'),
+                                    Print('d'),
+                                ]), Call('a', []),
                                 ])
 
         output.append(tree.generate())
@@ -224,26 +233,46 @@ class Def:
 
         code = [
             ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', self.name), len(params) + 1]),
+            ('func_info', [('atom', 'prova'), ('atom', self.name), 2]),
             ('label', []),
             ('allocate', [heap, 0]),
         ]
 
         # memorizzo in ('y', 0) il contesto a cui aggiungo un nuovo dizionario 
-        # per le variabili locali
+        # per le variabili locali, memorizzo anche la lista dei parametri
         code += [
             ('move', [('x', 0), ('y', 0)]),
+            ('move', [('x', 1), ('y', 3)]),
             ('call_ext', [0, ('extfunc', 'orddict:new/0')]),
             ('put_list', [('x', 0), ('y', 0), ('y', 0)]),
         ]
         
-
-        # memorizzo i parametri della funzione a partire da ('y', START_VAR_INDEX)
-        #for p in params:
-        #    y = len(locals_) + START_VAR_INDEX
-        #    locals_.append(p)
-        #    code += [('move', [('x', params.index(p) + 1), ('y', y)])]
-
+        # memorizzo i parametri attuali della funzione tra le variabili locali
+        code += [
+            # estraggo la parte locale dal contesto
+            ('get_list', [('y', 0), ('y', 4), ('y', 0)]),
+            ('move', [('y', 4), ('x', 2)]),
+        ]
+        for p in params:
+            code += [
+                # inserisco la nuova variabile, tramite -> orddict:store('A', A, D0)
+                ('get_list', [('y', 3), ('x', 1), ('y', 3)]),
+                ('move', [('atom', p), ('x', 0)]),
+                ('call_ext', [3, ('extfunc', 'orddict:store/3')]),
+                ('move', [('x', 0), ('x', 2)]),
+            ]
+            
+        # # debug
+        # code += [
+        #  ('put_list', [('y', 4), ('nil', None), ('x', 1)]),
+        #  ('move', [('literal', None), 0]),
+        #  ('int_code_end', []),
+        #  ('call_ext', [2, ('extfunc', 'io:format/2')]),
+        # ]
+        
+        # rimetto la parte locale nel contesto
+        code += [('put_list', [('x', 0), ('y', 0), ('y', 0)]),]
+        
         for b in body:
             if b.__class__ in (Def,):
                 b.ancestors = self.ancestors + [self.name]
@@ -269,7 +298,7 @@ class Def:
                 self.output.append(b.generate())
             else:
                 code += b.generate()
-
+                
         code += [
             ('deallocate', [heap]),
             ('return', []),
@@ -356,7 +385,26 @@ class Call:
         called = self.called
         params = self.params
         
-        code = merge_context()
+        code = []
+        
+        # # debug
+        # code += [
+        #  ('put_list', [('y', 0), ('nil', None), ('x', 1)]),
+        #  ('move', [('literal', None), 0]),
+        #  ('int_code_end', []),
+        #  ('call_ext', [2, ('extfunc', 'io:format/2')]),
+        # ]
+        
+        code += merge_context()
+        # # debug
+        # code += [
+        #     ('move', [('x', 0), ('y', 6)]),
+        #     ('put_list', [('y', 0), ('nil', None), ('x', 1)]),
+        #     ('move', [('literal', None), 0]),
+        #     ('int_code_end', []),
+        #     ('call_ext', [2, ('extfunc', 'io:format/2')]),
+        #     ('move', [('y', 6), ('x', 0)]),
+        # ]
         code += get_from_context(called)
         
         # ho ottenuto il riferimento alla funzione ovvero una lista [name, deep].
@@ -364,6 +412,7 @@ class Call:
             ('get_list', [('x', 0), ('y', 3), ('x', 0)]),
             ('get_list', [('x', 0), ('y', 4), ('x', 0)]),
         ]
+        # y3->name y4->deep
         
         # prepara il sottinsieme del contesto da passare alla funzione
         code += [
@@ -372,34 +421,46 @@ class Call:
             ('move', [('y', 4), ('x', 1)]),
             ('call_ext', [2, ('extfunc', 'lists:sublist/2')]),
             ('call_ext', [1, ('extfunc', 'lists:reverse/1')]),
+            ('move', [('x', 0), ('y', 5)]),
         ]
+        # y5->new_context
         
-        # comincio a costruire la lista dei parametri da passare alla funzione,
-        # il primo elemento è il contesto creato appena sopra
-        code += [('put_list', [('x', 0), ('nil', None), ('y', 5)]),]
-        
-        # cerco il valore di ciascuna variabile nel contesto e la aggiungo alla lista
-        # di parametri da passare alla funzione
+        # recupero dal contesto il valore di ciascuna variabile da passare e li inserisco
+        # in una nuova lista. verrà infine costituita una lista contenente il contesto e
+        # la suddetta lista di parametri
         code += [
             ('move', [('y', 0), ('x', 0)]),
             ('call', [1, ('prova', 'dict_list_merge/1')]),
             ('move', [('x', 0), ('y', 6)]),
         ]
+        # y6->merged_context
+        
+        code += [('move', [('nil', None), ('y', 4)]),]
+        # y4 -> empty_list
+        
         for p in params:
             code += [
                 ('move', [('y', 6), ('x', 1)]),
                 ('move', [('atom', p), ('x', 0)]),
                 ('call_ext', [2, ('extfunc', 'orddict:fetch/2')]),
-                ('put_list', [('x', 0), ('y', 5), ('y', 5)]),
+                ('put_list', [('x', 0), ('y', 4), ('y', 4)]),
             ]
+            
+        # costruisce la lista finale
+        code += [
+            ('move', [('y', 4), ('x', 0)]),
+            ('call_ext', [1, ('extfunc', 'lists:reverse/1')]),
+            ('put_list', [('x', 0), ('nil', None), ('y', 6)]),
+            ('put_list', [('y', 5), ('y', 6), ('x', 0)]),
+            
+        ]
         
         code += [
-            ('move', [('y', 5), ('x', 2)]),
+            ('move', [('x', 0), ('x', 2)]),
             ('move', [('atom', 'prova'), ('x', 0)]),
             ('move', [('y', 3), ('x', 1)]),
             ('call_ext', [3, ('extfunc', 'erlang:apply/3')]),
         ]
-        #code += [('call', [1, ('prova', '%s/%d' % (self.called, 1))])]
         return code
 
 class Assign:
@@ -457,7 +518,7 @@ class Print:
         if value == None:
             code += [('put_list', [('x', 0), ('nil', None), ('x', 1)])]
         else:
-            if type(value):
+            if type(value) == int:
                 code += [('move', [('integer', value), ('x', 0)])]
             else:
                 code += merge_context()
@@ -522,14 +583,14 @@ def ciao_like():
     atoms = ['prova', 'go', 'lists', 'seq', 'for1', 'io', 'format', 'ok', 'erlang',
              'module', 'module_info', 'get_module_info', 'orddict', 'fetch', 'new', 'store', 'call_go',
              'dict_list_merge', 'lists', 'sublist', 'foldl', 'dict_merge', 'merge', '-dict_merge/2-fun-0-',
-             '-dict_list_merge/1-fun-0-', 'fun__0', 't', 'apply', 'a', 'b', 'c', 'i',
-             'reverse', 'fun__1'] # 'fun__2',
+             '-dict_list_merge/1-fun-0-', 'fun__0', 't', 'apply', 'a', 'b', 'c', 'i', 'd',
+             'reverse', 'fun__1', 'fun__2',]
 
 
     imports = ['lists:seq/2', 'io:format/2', 'orddict:fetch/2', 'orddict:new/0', 'orddict:store/3',
                'lists:foldl/3', 'lists:sublist/2', 'orddict:merge/3', 'erlang:get_module_info/1',
                'erlang:get_module_info/2', 'erlang:apply/3', 'lists:reverse/1']
-    exports = ['module_info/1', 'module_info/0', 'module/0', 'fun__0/1', 'fun__1/1'] #'fun__2/1'
+    exports = ['module_info/1', 'module_info/0', 'module/0', 'fun__0/2', 'fun__1/2']
     locals_ = ['-dict_list_merge/1-fun-0-/2', '-dict_merge/2-fun-0-/3', 'dict_merge/2',
                'dict_list_merge/1'] #'go/2', 'call_go/1'
 
