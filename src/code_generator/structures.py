@@ -1,167 +1,28 @@
 #!/usr/bin/env python
 # encoding: utf-8
 """
-code_generator.py
+structures.py
 
-Created by Fabio Pricoco on 2012-03-11.
+Created by Fabio Pricoco on 2012-03-27.
 Copyright (c) 2012 ofabio. All rights reserved.
 """
 
 import sys
 import os
 dirname = os.path.dirname
-P2B_FOLDER = dirname(dirname(__file__))
-sys.path.append(P2B_FOLDER)
+ROOT_FOLDER = dirname(dirname(__file__))
+sys.path.append(ROOT_FOLDER)
 from beam.assembler.beam_encoder import *
+
 heap = 7
 
-# python
-print 'output would be...'
-
-def a():
-    print 1
-    c = 5
-    d = 8
-    b(c, d)
-def b(c, d):
-    print c
-    print d
-a()
-    
-print '---'
-
-class CodeGenerator:
-    def __init__(self):
-        #self.code = []
-        pass
-
-    def generate(self):
-        output = []
-        
-        # tree = Module(output, [
-        #                        Def(output, 'a', [], [Print('t'),]), 
-        #                        Assign('t', 5),
-        #                        Call('a', []),
-        #                        Assign('t', 2),
-        #                        Call('a', []),
-        #                        ])
-
-        tree = Module(output, [
-                                Def(output, 'a', [], [
-                                    Print(1),
-                                    Assign('c', 5), 
-                                    Assign('d', 8), 
-                                    Call('b', ['c', 'd'])]), 
-                                Def(output, 'b', ['c', 'd'], [
-                                    Print('c'),
-                                    Print('d'),
-                                ]), Call('a', []),
-                                ])
-
-        output.append(tree.generate())
-
-        output += (self.utility_code())
-
-        output = self.assign_labels(output)
-
-        return output
-
-    def utility_code(self):
-        code = [
-        [
-            ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', 'module_info'), 0]),
-            ('label', []),
-            ('move', [('atom', 'prova'), ('x', 0)]),
-            ('call_ext_only', [1, ('extfunc', 'erlang:get_module_info/1')]),
-        ],
-        [
-            ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', 'module_info'), 1]),
-            ('label', []),
-            ('move', [('x', 0), ('x', 1)]),
-            ('move', [('atom', 'prova'), ('x', 0)]),
-            ('call_ext_only', [2, ('extfunc', 'erlang:get_module_info/2')]),
-        ],
-        [
-            ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', 'dict_list_merge'), 1]),
-            ('label', []),
-            ('allocate_zero', [2, 1]),
-            ('move', [('x', 0), ('y', 1)]),
-            ('call_ext', [0, ('extfunc', 'orddict:new/0')]),
-            ('move', [('x', 0), ('y', 0)]),
-            ('make_fun2', [('prova', '-dict_list_merge/1-fun-0-/2')]),
-            ('move', [('y', 1), ('x', 2)]),
-            ('move', [('y', 0), ('x', 1)]),
-            ('call_ext_last', [3, ('extfunc', 'lists:foldl/3'), 2]),
-        ],
-        [
-            ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', 'dict_merge'), 2]),
-            ('label', []),
-            ('allocate', [2, 2]),
-            ('move', [('x', 1), ('y', 0)]),
-            ('move', [('x', 0), ('y', 1)]),
-            ('make_fun2', [('prova', '-dict_merge/2-fun-0-/3')]),
-            ('move', [('y', 0), ('x', 2)]),
-            ('move', [('y', 1), ('x', 1)]),
-            ('call_ext_last', [3, ('extfunc', 'orddict:merge/3'), 2]),
-        ],
-        [
-            ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', '-dict_merge/2-fun-0-'), 3]),
-            ('label', []),
-            ('move', [('x', 2), ('x', 0)]),
-            ('return', []),
-        ],
-        [
-            ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', '-dict_list_merge/1-fun-0-'), 2]),
-            ('label', []),
-            ('call_only', [2, ('prova', 'dict_merge/2')]),
-        ],
-        ]
-
-        return code
-
-    def assign_labels(self, output):
-        """assegna ai label dei valori incrementali e contemporaneamente salva i label riferiti
-        alle destinazioni delle jump. In una seconda passata assegna quei label alle jump"""
-        #self.print_all(output)
-        
-        labels = dict()
-        l = 0
-        for fun in output:
-            for instr in fun:
-                if instr[0] == 'label':
-                    l += 1
-                    li = instr[1]
-                    if instr[1]:
-                        labels[li[0]] = l
-                        li.pop()
-                    li.append(l)
-        for fun in output:
-            for instr in fun:
-                params = instr[1]
-                for param in params:
-                    if type(param) == tuple and param[0] == 'f':
-                        new_param = (param[0], labels[param[1]])
-                        params[params.index(param)] = new_param
-        return output
-        
-    def print_all(self, code):
-        for i in code:
-            for i2 in i:
-                print '%s,' % (i2,)
-            print
-
 class Module:
-    def __init__(self, output, body):
-        self.output = output
+    def __init__(self, body):
+        self.output = []
         self.body = body
 
     def generate(self):
+        output = self.output
         body = self.body
 
         code = [
@@ -181,6 +42,7 @@ class Module:
 
         for b in body:
             if b.__class__ in (Def,):
+                b.output = output
                 b.ancestors = ['module']
                 # prepara il riferimento alla nuova funzione: [name, deep=1].
                 # deep è la profondità che darà luogo la nuova funzione, nonchè il numero
@@ -193,8 +55,9 @@ class Module:
                 ]
                 code += assign_local(b.assign_to)
                 
-                self.output.append(b.generate())
+                output.append(b.generate())
             elif b.__class__ in (For,):
+                b.output = output
                 b.ancestors = ['module']
                 # passa al for (context, variabile su cui iterare il for)
                 code += [
@@ -204,7 +67,7 @@ class Module:
                     ('move', [('x', 0), ('y', 0)]),
                 ]
             
-                self.output.append(b.generate())
+                output.append(b.generate())
             else:
                 code += b.generate()
 
@@ -213,13 +76,15 @@ class Module:
             ('deallocate', [heap]),
             ('return', []),
         ]
-        return code
+        
+        output.append(code)
+        return output
 
 class Def:
     n_fun = 0
     
-    def __init__(self, output, assign_to, params, body):
-        self.output = output
+    def __init__(self, assign_to, params, body):
+        self.output = None
         self.assign_to = assign_to
         self.params = params
         self.body = body
@@ -228,6 +93,7 @@ class Def:
         self.ancestors = []
 
     def generate(self):
+        output = self.output
         body = self.body
         params = self.params
 
@@ -275,6 +141,7 @@ class Def:
         
         for b in body:
             if b.__class__ in (Def,):
+                b.output = output
                 b.ancestors = self.ancestors + [self.name]
                 code += [
                     ('move', [('integer', len(b.ancestors)), ('x', 0)]),
@@ -285,6 +152,7 @@ class Def:
                 
                 self.output.append(b.generate())
             elif b.__class__ in (For,):
+                b.output = output
                 b.ancestors = self.ancestors + [self.name]
             
                 # passa al for (context; variabile su cui iterare il for)
@@ -295,7 +163,7 @@ class Def:
                     ('move', [('x', 0), ('y', 0)]),
                 ]
             
-                self.output.append(b.generate())
+                output.append(b.generate())
             else:
                 code += b.generate()
                 
@@ -309,8 +177,8 @@ class For:
     label = 1
     name_num = 1
 
-    def __init__(self, output, item, body):
-        self.output = output
+    def __init__(self, item, body):
+        self.output = None
         self.name = "for%d" % For.name_num
         For.name_num += 1
         self.item = item
@@ -318,6 +186,7 @@ class For:
         
     def generate(self):
         # for (context, list)
+        output = self.output
         item = self.item
         body = self.body
         
@@ -337,6 +206,7 @@ class For:
 
         for b in body:
             if b.__class__ in (Def,):
+                b.output = output
                 b.ancestors = self.ancestors
                 code += [
                     ('move', [('integer', len(b.ancestors)), ('x', 0)]),
@@ -347,6 +217,7 @@ class For:
                 
                 self.output.append(b.generate())
             elif b.__class__ in (For,):
+                b.output = output
                 b.ancestors = self.ancestors
             
                 # passa al for (context; variabile su cui iterare il for)
@@ -387,24 +258,7 @@ class Call:
         
         code = []
         
-        # # debug
-        # code += [
-        #  ('put_list', [('y', 0), ('nil', None), ('x', 1)]),
-        #  ('move', [('literal', None), 0]),
-        #  ('int_code_end', []),
-        #  ('call_ext', [2, ('extfunc', 'io:format/2')]),
-        # ]
-        
         code += merge_context()
-        # # debug
-        # code += [
-        #     ('move', [('x', 0), ('y', 6)]),
-        #     ('put_list', [('y', 0), ('nil', None), ('x', 1)]),
-        #     ('move', [('literal', None), 0]),
-        #     ('int_code_end', []),
-        #     ('call_ext', [2, ('extfunc', 'io:format/2')]),
-        #     ('move', [('y', 6), ('x', 0)]),
-        # ]
         code += get_from_context(called)
         
         # ho ottenuto il riferimento alla funzione ovvero una lista [name, deep].
@@ -565,51 +419,6 @@ def get_from_context(var):
     ]
     
 
-def ciao_like():
-    attributes = ExternalTerm(List(Tuple(Atom('vsn'), List(Big(10355834843103504983582285655618377565L)))))
-    compile_info = ExternalTerm(List(
-            Tuple(Atom('options'), Nil()),
-            Tuple(Atom('version'), String('4.8')), Tuple(
-                Atom('time'),
-                Tuple(Integer(2012), Integer(3), Integer(8), Integer(21), Integer(1), Integer(28))
-            ), Tuple(Atom('source'),
-            String('/Users/fabio/Programmazione/ErlangWorld/beam exploration/code/8/prova.erl'))))
-    literals = [ExternalTerm(String('~w~n')), ExternalTerm(Integer(0)), ExternalTerm(Integer(10))]
-
-    #atoms = ['prova', 'go', 'lists', 'seq', 'for1', 'io', 'format', 'ok', 'erlang',
-    #         'module', 'module_info', 'get_module_info', 'a', 'orddict', 'fetch', 'new', 'store', 'call_go',
-    #         'dict_list_merge', 'lists', 'sublist', 'foldl', 'dict_merge', 'merge', '-dict_merge/2-fun-0-',
-    #         '-dict_list_merge/1-fun-0-', 'go2', 'i', 'fun__0', 't', 'apply']
-    atoms = ['prova', 'go', 'lists', 'seq', 'for1', 'io', 'format', 'ok', 'erlang',
-             'module', 'module_info', 'get_module_info', 'orddict', 'fetch', 'new', 'store', 'call_go',
-             'dict_list_merge', 'lists', 'sublist', 'foldl', 'dict_merge', 'merge', '-dict_merge/2-fun-0-',
-             '-dict_list_merge/1-fun-0-', 'fun__0', 't', 'apply', 'a', 'b', 'c', 'i', 'd',
-             'reverse', 'fun__1', 'fun__2',]
-
-
-    imports = ['lists:seq/2', 'io:format/2', 'orddict:fetch/2', 'orddict:new/0', 'orddict:store/3',
-               'lists:foldl/3', 'lists:sublist/2', 'orddict:merge/3', 'erlang:get_module_info/1',
-               'erlang:get_module_info/2', 'erlang:apply/3', 'lists:reverse/1']
-    exports = ['module_info/1', 'module_info/0', 'module/0', 'fun__0/2', 'fun__1/2']
-    locals_ = ['-dict_list_merge/1-fun-0-/2', '-dict_merge/2-fun-0-/3', 'dict_merge/2',
-               'dict_list_merge/1'] #'go/2', 'call_go/1'
-
-    #locals_ = ['-dict_list_merge/1-fun-0-/2', '-dict_merge/2-fun-0-/3', 'dict_merge/2',
-    #           'dict_list_merge/1']
-
-    cg = CodeGenerator()
-    code = cg.generate()
-    for i in code:
-        for i2 in i:
-            print '%s,' % (i2,)
-        print
-
-    te = BeamEncoder(atoms, code, imports, exports, literals, locals_, attributes, compile_info)
-    te.make_binary()
-    te.write('prova.beam')
-
-
-
 if __name__ == '__main__':
-    ciao_like()
-    #test()
+    main()
+
