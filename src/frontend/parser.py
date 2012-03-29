@@ -217,7 +217,6 @@ def p_power(p):
     if len(p) == 2: # power : atom
         p[0] = p[1]
     else:           # power : atom trailer
-        print "Call:", p[1], p[2][1]
         if p[2][0] == "CALL":
             p[0] = Call(p[1], p[2][1])
         else:
@@ -238,8 +237,12 @@ def p_atom_tuple(p):
 
 # trailer: '(' [arglist] ')' | '[' subscriptlist ']' | '.' NAME
 def p_trailer(p):
-    "trailer : LPAREN arglist RPAREN"
-    p[0] = ("CALL", p[2])
+    """trailer : LPAREN arglist RPAREN
+               | LPAREN RPAREN"""
+    if len(p) == 3:
+        p[0] = ("CALL", [])
+    else:
+        p[0] = ("CALL", p[2])
 
 # testlist: test (',' test)* [',']
 # Contains shift/reduce error

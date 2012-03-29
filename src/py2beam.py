@@ -23,10 +23,11 @@ def factorial(n):
     else:
         return None'''
     code = r"""
-a = 16
-def call_go(b):
+a = 5
+def call_go():
+    b = 7
     print b
-call_go(a)
+call_go()
 print a
 """
     print code
