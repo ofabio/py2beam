@@ -53,7 +53,7 @@ class BeamDecoder:
             mem = None
             params = list()
             for param in instr['params']:
-                if param in (8, 10, 13):
+                if param in (8, 9, 10, 13):
                     mem = param
                     continue
                 dp = self.decode_param(instr['opname'], param, pos, atoms, labels,
@@ -72,6 +72,10 @@ class BeamDecoder:
                 
             elif mem == 8:
                 # extended_numbering for label
+                return p
+                
+            elif mem == 9:
+                # extended_numbering for integer
                 return p
                 
             elif mem == 13:

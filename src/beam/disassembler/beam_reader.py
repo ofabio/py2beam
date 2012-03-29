@@ -139,7 +139,7 @@ class BeamReader:
                 l = self.read_byte_value(gen)
                 params.append(l)
                 n_letti += 1
-                if l in (8, 13):
+                if l in (8, 9, 13):
                     params.append(self.read_byte_value(gen))
                     n_letti += 1
             # se l'opcode è una def di funzione di ordine superiore:

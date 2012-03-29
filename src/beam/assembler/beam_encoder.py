@@ -189,6 +189,8 @@ class BeamEncoder():
                 return n * 16 + 5
 
     def integer(self, n):
+        if n > 15:
+            return (9, n)
         return n * 16 + 1
         
     def literal(self, n):

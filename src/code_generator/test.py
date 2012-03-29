@@ -40,6 +40,7 @@ def test1():
     
     composer = Composer(tree)
     composer.generate()
+    composer.write('prova.beam')
 
 def test2():
     print '-- TEST 2 --'
@@ -58,6 +59,7 @@ def test2():
     
     composer = Composer(tree)
     composer.generate()
+    composer.write('prova.beam')
 
 def test3():
     print '-- TEST 3 --'
@@ -77,6 +79,7 @@ def test3():
     
     composer = Composer(tree)
     composer.generate()
+    composer.write('prova.beam')
 
 def test4():
     print '-- TEST 4 --'
@@ -106,9 +109,28 @@ def test4():
     
     composer = Composer(tree)
     composer.generate()
+    composer.write('prova.beam')
+    
+def test5():
+    print '-- TEST 5 --'
+    print 'output would be...'
+
+    a = 250
+    print a
+
+    print '------------'
+
+    tree = Module([
+        Assign('a', 250),
+        Print('a')
+    ])
+
+    composer = Composer(tree)
+    composer.generate()
+    composer.write('prova.beam')
 
 def main():
-    test4()
+    test5()
 
 if __name__ == '__main__':
     main()

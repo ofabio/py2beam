@@ -18,6 +18,7 @@ from beam.assembler.beam_encoder import *
 class Composer:
     def __init__(self, tree):
         self.tree = tree
+        self.beam_encoder = None
 
     def generate(self):
         code = self.tree.generate()
@@ -28,14 +29,22 @@ class Composer:
         
         self.print_code(code)
         
-        bh = HeaderBuilder(code)
-        h = bh.get_header()
+        hb = HeaderBuilder(code)
+        h = hb.get_header()
         self.print_header(h)
         
-        te = BeamEncoder(h['atoms'], code, h['imports'], h['exports'], h['literals'], h['locals'], 
+        be = BeamEncoder(h['atoms'], code, h['imports'], h['exports'], h['literals'], h['locals'], 
                          h['attributes'], h['compile_info'])
-        te.make_binary()
-        te.write('prova.beam')
+        be.make_binary()
+        self.beam_encoder = be
+        
+    def write(self, file_name):
+        be = self.beam_encoder
+        if not be:
+            raise Exception('Do generate, before!')
+        be.write(file_name)
+        print
+        print 'file "%s" generated!' % file_name
 
     def utility_code(self):
         code = [
