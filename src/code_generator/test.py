@@ -33,8 +33,8 @@ def test1():
             Assign('d', 8),
             Call('b', ['c', 'd'])]),
         Def('b', ['c', 'd'], [
-            Print('c'),
-            Print('d'),
+            Print(Var('c')),
+            Print(Var('d')),
         ]), Call('a', []),
     ])
     
@@ -46,35 +46,14 @@ def test2():
     print '-- TEST 2 --'
     print 'output would be...'
     
-    for i in range(1, 6):
+    for i in range(0, 2):
         print i
     print '------------'
     
     tree = Module([
-        Range(1, 6),
-        For('i', [
-            Print('i'),
+        For('i', Range(0, 2), [
+            Print(Var('i')),
         ])
-    ])
-    
-    composer = Composer(tree)
-    composer.generate()
-    composer.write('prova.beam')
-
-def test3():
-    print '-- TEST 3 --'
-    print 'output would be...'
-
-    for l in range(0, 2):
-        print l
-    
-    print '------------'
-    
-    tree = Module([
-        Range(0, 2),
-        For('l', [
-            Print('l')
-        ]),
     ])
     
     composer = Composer(tree)
@@ -98,8 +77,7 @@ def test4():
         Def('a', [], [
             Print(5)
         ]),
-        Range(0, 2),
-        For('l', [
+        For('l', Range(0, 2), [
             Call('a', []),
             Def('a', [], [
                 Print(10)
@@ -115,14 +93,45 @@ def test5():
     print '-- TEST 5 --'
     print 'output would be...'
 
-    a = 250
-    print a
+    def hello():
+        return 5
+    print hello()
 
     print '------------'
 
     tree = Module([
-        Assign('a', 250),
-        Print('a')
+        Def('hello', [], [
+            Return(5)
+        ]),
+        Print(Call('hello', []))
+    ])
+
+    composer = Composer(tree)
+    composer.generate()
+    composer.write('prova.beam')
+
+def test6():
+    print '-- TEST 6 --'
+    print 'output would be...'
+
+    def add(p):
+        return p
+    def hello():
+        a = 5
+        return add(a)
+    print hello()
+
+    print '------------'
+
+    tree = Module([
+        Def('add', ['p'], [
+            Return(Var('p'))
+        ]),
+        Def('hello', [], [
+            Assign('a', 5),
+            Return(Call('add', ['a']))
+        ]),
+        Print(Call('hello', []))
     ])
 
     composer = Composer(tree)
@@ -130,7 +139,7 @@ def test5():
     composer.write('prova.beam')
 
 def main():
-    test5()
+    test6()
 
 if __name__ == '__main__':
     main()

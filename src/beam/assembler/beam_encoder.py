@@ -161,7 +161,7 @@ class BeamEncoder():
     def atom(self, atom):
         #if atom.startswith('-'):
         n_atom = self.atoms.index(atom)
-        if  n_atom > 15:
+        if  n_atom > 14:
             return (10, n_atom + 1)
         return (n_atom + 1) * 16 + 2
 

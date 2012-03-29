@@ -44,7 +44,7 @@ class Module:
             if b.__class__ in (Def,):
                 b.output = output
                 b.ancestors = ['module']
-                # prepara il riferimento alla nuova funzione: [name, deep=1].
+                # salva il riferimento alla nuova funzione: [name=fun1, deep=1].
                 # deep è la profondità che darà luogo la nuova funzione, nonchè il numero
                 # di insiemi di variabili da trasportare, a partire da quello di livello
                 # modulo in su!
@@ -60,6 +60,7 @@ class Module:
                 b.output = output
                 b.ancestors = ['module']
                 # passa al for (context, variabile su cui iterare il for)
+                code += b.items_list.generate()
                 code += [
                     ('move', [('x', 0), ('x', 1)]),
                     ('move', [('y', 0), ('x', 0)]),
@@ -127,14 +128,6 @@ class Def:
                 ('call_ext', [3, ('extfunc', 'orddict:store/3')]),
                 ('move', [('x', 0), ('x', 2)]),
             ]
-            
-        # # debug
-        # code += [
-        #  ('put_list', [('y', 4), ('nil', None), ('x', 1)]),
-        #  ('move', [('literal', None), 0]),
-        #  ('int_code_end', []),
-        #  ('call_ext', [2, ('extfunc', 'io:format/2')]),
-        # ]
         
         # rimetto la parte locale nel contesto
         code += [('put_list', [('x', 0), ('y', 0), ('y', 0)]),]
@@ -168,6 +161,7 @@ class Def:
                 code += b.generate()
                 
         code += [
+            ('move', [('atom', 'None'), ('x', 0)]),
             ('deallocate', [heap]),
             ('return', []),
         ]
@@ -177,17 +171,19 @@ class For:
     label = 1
     name_num = 1
 
-    def __init__(self, item, body):
+    def __init__(self, item, items_list, body):
         self.output = None
         self.name = "for%d" % For.name_num
         For.name_num += 1
         self.item = item
+        self.items_list = items_list
         self.body = body
         
     def generate(self):
         # for (context, list)
         output = self.output
         item = self.item
+        items_list = self.items_list
         body = self.body
         
         code = [
@@ -239,7 +235,7 @@ class For:
             ('call_last', [3, ('prova', self.name + '/2'), heap]),
             ('label', [For.label + 1]),
             ('is_nil', [('f', For.label), ('x', 1)]),
-            #('move', [('y', 0), ('x', 0)]),
+            #('move', [('y', 0), ('x', 0)]), dovrebbe non essere necessario!
             ('return', []),
         ]
 
@@ -317,21 +313,43 @@ class Call:
         ]
         return code
 
+class Return:
+    def __init__(self, obj=None):
+        self.obj = obj
+        
+    def generate(self):
+        obj = self.obj
+        code = []
+        if obj:
+            code += evaluate(obj)
+        else:
+            code += [('move', [('atom', 'None'), ('x', 0)])]
+        code += [
+            ('deallocate', [heap]),
+            ('return', []),
+        ]
+        return code
+    
 class Assign:
-    def __init__(self, var, value = None):
+    def __init__(self, var, obj):
         self.var = var
-        self.value = value
+        self.obj = obj
 
     def generate(self):
-        var = self.var
-        value = self.value
-
-        if value:
-            code = [('move', [('integer', value), ('x', 0)])]
-
-        code += assign_local(var)
+        code = evaluate(self.obj)
+        code += assign_local(self.var)
         
         return code
+
+def evaluate(obj):
+    code = []
+    if type(obj) == int:
+        code += [('move', [('integer', obj), ('x', 0)])]
+    elif type(obj) == float:
+        code += [('move', [('float', obj), ('x', 0)])]
+    else:
+        code += obj.generate()
+    return code
 
 def assign_local(var):
     return [
@@ -362,21 +380,11 @@ class Range:
         return code
 
 class Print:
-    def __init__(self, value=None):
-        self.value = value
+    def __init__(self, obj=None):
+        self.obj = obj
 
     def generate(self):
-        value = self.value
-
-        code = []
-        if value == None:
-            code += [('put_list', [('x', 0), ('nil', None), ('x', 1)])]
-        else:
-            if type(value) == int:
-                code += [('move', [('integer', value), ('x', 0)])]
-            else:
-                code += merge_context()
-                code += get_from_context(value)
+        code = evaluate(self.obj)
 
         code += [
             ('put_list', [('x', 0), ('nil', None), ('x', 1)]),
@@ -384,6 +392,16 @@ class Print:
             ('int_code_end', []),
             ('call_ext', [2, ('extfunc', 'io:format/2')]),
         ]
+        return code
+        
+class Var:
+    def __init__(self, name):
+        self.name = name
+        
+    def generate(self):
+        name = self.name
+        code = merge_context()
+        code += get_from_context(name)
         return code
 
 class Debug:

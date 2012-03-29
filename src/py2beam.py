@@ -23,7 +23,7 @@ def factorial(n):
     else:
         return None'''
     code = r"""
-a = 5
+a = 230
 def call_go():
     b = 7
     print b
@@ -35,3 +35,4 @@ print a
     raw_code = parser.parse(code)
     composer = Composer(raw_code)
     composer.generate()
+    composer.write('prova.beam')
