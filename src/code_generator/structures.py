@@ -18,16 +18,17 @@ heap = 7
 
 class Module:
     def __init__(self, body):
-        self.output = []
+        self.module_name = None
         self.body = body
 
     def generate(self):
-        output = self.output
+        module_name = self.module_name
         body = self.body
+        output = []
 
         code = [
             ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', 'module'), 0]),
+            ('func_info', [('atom', module_name), ('atom', 'module'), 0]),
             ('label', []),
             ('allocate', [heap, 0]),  # alloco n y!
         ]
@@ -41,6 +42,7 @@ class Module:
         ]
 
         for b in body:
+            b.module_name = module_name
             if b.__class__ in (Def, For):
                 b.output = output
                 b.ancestors = ['module']
@@ -59,6 +61,7 @@ class Def:
     n_fun = 0
     
     def __init__(self, assign_to, params, body):
+        self.module_name = None
         self.output = None
         self.assign_to = assign_to
         self.params = params
@@ -72,13 +75,14 @@ class Def:
         return self.inline()
         
     def to_base(self):
+        module_name = self.module_name
         output = self.output
         body = self.body
         params = self.params
 
         code = [
             ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', self.name), 2]),
+            ('func_info', [('atom', module_name), ('atom', self.name), 2]),
             ('label', []),
             ('allocate', [heap, 0]),
         ]
@@ -111,6 +115,7 @@ class Def:
         code += [('put_list', [('x', 0), ('y', 0), ('y', 0)]),]
         
         for b in body:
+            b.module_name = self.module_name
             if b.__class__ in (Def, For):
                 b.output = output
                 b.ancestors = self.ancestors + [self.name]
@@ -141,6 +146,7 @@ class For:
     name_num = 1
 
     def __init__(self, item, items_list, body):
+        self.module_name = None
         self.output = None
         self.name = "for%d" % For.name_num
         For.name_num += 1
@@ -154,6 +160,7 @@ class For:
 
     def to_base(self):
         # for (context, list)
+        module_name = self.module_name
         output = self.output
         item = self.item
         items_list = self.items_list
@@ -161,7 +168,7 @@ class For:
         
         code = [
             ('label', [For.label]),
-            ('func_info', [('atom', 'prova'), ('atom', self.name), 2]),
+            ('func_info', [('atom', module_name), ('atom', self.name), 2]),
             ('label', []),
             ('is_nonempty_list', [('f', For.label + 1), ('x', 1)]),
             ('allocate', [heap, 0]),
@@ -174,6 +181,7 @@ class For:
         code += assign_local(self.item)
 
         for b in body:
+            b.module_name = self.module_name
             if b.__class__ in (Def, For):
                 b.output = output
                 b.ancestors = self.ancestors + [self.name]
@@ -183,7 +191,7 @@ class For:
         code += [
             ('move', [('y', 0), ('x', 0)]),
             ('move', [('y', 1), ('x', 1)]),
-            ('call_last', [3, ('prova', self.name + '/2'), heap]),
+            ('call_last', [3, (module_name, self.name + '/2'), heap]),
             ('label', [For.label + 1]),
             ('is_nil', [('f', For.label), ('x', 1)]),
             #('move', [('y', 0), ('x', 0)]), dovrebbe non essere necessario!
@@ -194,28 +202,31 @@ class For:
         output.append(code)
         
     def inline(self):
+        module_name = self.module_name
         # passa al for (context, variabile su cui iterare il for)
         code = self.items_list.generate()
         code += [
             ('move', [('x', 0), ('x', 1)]),
             ('move', [('y', 0), ('x', 0)]),
-            ('call', [2, ('prova', '%s/%d' % (self.name, 2))]),
+            ('call', [2, (module_name, '%s/%d' % (self.name, 2))]),
             ('move', [('x', 0), ('y', 0)]),
         ]
         return code
 
 class Call:
     def __init__(self, called, params):
+        self.module_name = None
         self.called = called
         self.params = params
 
     def generate(self):
+        module_name = self.module_name
         called = self.called
         params = self.params
         
         code = []
         
-        code += merge_context()
+        code += merge_context(module_name)
         code += get_from_context(called)
         
         # ho ottenuto il riferimento alla funzione ovvero una lista [name, deep].
@@ -241,7 +252,7 @@ class Call:
         # la suddetta lista di parametri
         code += [
             ('move', [('y', 0), ('x', 0)]),
-            ('call', [1, ('prova', 'dict_list_merge/1')]),
+            ('call', [1, (module_name, 'dict_list_merge/1')]),
             ('move', [('x', 0), ('y', 6)]),
         ]
         # y6->merged_context
@@ -268,7 +279,7 @@ class Call:
         
         code += [
             ('move', [('x', 0), ('x', 2)]),
-            ('move', [('atom', 'prova'), ('x', 0)]),
+            ('move', [('atom', module_name), ('x', 0)]),
             ('move', [('y', 3), ('x', 1)]),
             ('call_ext', [3, ('extfunc', 'erlang:apply/3')]),
         ]
@@ -276,13 +287,14 @@ class Call:
 
 class Return:
     def __init__(self, obj=None):
+        self.module_name = None
         self.obj = obj
         
     def generate(self):
         obj = self.obj
         code = []
         if obj:
-            code += evaluate(obj)
+            code += evaluate(self.module_name, obj)
         else:
             code += [('move', [('atom', 'None'), ('x', 0)])]
         code += [
@@ -293,22 +305,24 @@ class Return:
     
 class Assign:
     def __init__(self, var, obj):
+        self.module_name = None
         self.var = var
         self.obj = obj
 
     def generate(self):
-        code = evaluate(self.obj)
+        code = evaluate(self.module_name, self.obj)
         code += assign_local(self.var)
         
         return code
 
-def evaluate(obj):
+def evaluate(module_name, obj):
     code = []
     if type(obj) == int:
         code += [('move', [('integer', obj), ('x', 0)])]
     elif type(obj) == float:
         code += [('move', [('float', obj), ('x', 0)])]
     else:
+        obj.module_name = module_name
         code += obj.generate()
     return code
 
@@ -328,6 +342,7 @@ def assign_local(var):
 
 class Range:
     def __init__(self, start, stop):
+        self.module_name = None
         self.start = start
         self.stop = stop - 1
 
@@ -342,10 +357,11 @@ class Range:
 
 class Print:
     def __init__(self, obj=None):
+        self.module_name = None
         self.obj = obj
 
     def generate(self):
-        code = evaluate(self.obj)
+        code = evaluate(self.module_name, self.obj)
 
         code += [
             ('put_list', [('x', 0), ('nil', None), ('x', 1)]),
@@ -357,16 +373,19 @@ class Print:
         
 class Var:
     def __init__(self, name):
+        self.module_name = None
         self.name = name
         
     def generate(self):
+        module_name = self.module_name
         name = self.name
-        code = merge_context()
+        code = merge_context(self.module_name)
         code += get_from_context(name)
         return code
 
 class Debug:
     def __init__(self, what):
+        self.module_name = None
         self.what = what
 
     def generate(self):
@@ -383,10 +402,10 @@ class Debug:
             raise Exception('debug what??')
         return code
 
-def merge_context():
+def merge_context(module_name):
     return [
         ('move', [('y', 0), ('x', 0)]),
-        ('call', [1, ('prova', 'dict_list_merge/1')]),
+        ('call', [1, (module_name, 'dict_list_merge/1')]),
     ]
 
 def get_from_context(var):

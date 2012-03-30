@@ -2,4 +2,5 @@
 *.pyc
 *.beam
 *.swp
+*.tmproj
 parsetab.py

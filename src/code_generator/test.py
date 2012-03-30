@@ -11,9 +11,9 @@ from structures import *
 from composer import Composer
 
 def compose():
-    composer = Composer(tree)
+    composer = Composer('fabio', tree)
     composer.generate()
-    composer.write('prova.beam')
+    composer.write()
 
 def test1():
     global tree
@@ -127,9 +127,9 @@ def test5():
         Print(Call('hello', []))
     ])
 
-    composer = Composer(tree)
+    composer = Composer('fabio', tree)
     composer.generate()
-    composer.write('prova.beam')
+    composer.write()
 
 def test6():
     global tree
@@ -157,7 +157,7 @@ def test6():
     ])
 
 def main():
-    test3()
+    test1()
     compose()
 
 if __name__ == '__main__':

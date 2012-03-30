@@ -16,11 +16,13 @@ from beam.assembler.beam_encoder import *
 
 
 class Composer:
-    def __init__(self, tree):
+    def __init__(self, module_name, tree):
+        self.module_name = module_name
         self.tree = tree
         self.beam_encoder = None
 
     def generate(self):
+        self.tree.module_name = self.module_name
         code = self.tree.generate()
         
         code += (self.utility_code())
@@ -38,68 +40,69 @@ class Composer:
         be.make_binary()
         self.beam_encoder = be
         
-    def write(self, file_name):
+    def write(self):
         be = self.beam_encoder
         if not be:
             raise Exception('Do generate, before!')
-        be.write(file_name)
+        be.write('%s.beam' % self.module_name)
         print
-        print 'file "%s" generated!' % file_name
+        print 'file "%s.beam" generated!' % self.module_name
 
     def utility_code(self):
+        module_name = self.module_name
         code = [
         [
             ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', 'module_info'), 0]),
+            ('func_info', [('atom', module_name), ('atom', 'module_info'), 0]),
             ('label', []),
-            ('move', [('atom', 'prova'), ('x', 0)]),
+            ('move', [('atom', module_name), ('x', 0)]),
             ('call_ext_only', [1, ('extfunc', 'erlang:get_module_info/1')]),
         ],
         [
             ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', 'module_info'), 1]),
+            ('func_info', [('atom', module_name), ('atom', 'module_info'), 1]),
             ('label', []),
             ('move', [('x', 0), ('x', 1)]),
-            ('move', [('atom', 'prova'), ('x', 0)]),
+            ('move', [('atom', module_name), ('x', 0)]),
             ('call_ext_only', [2, ('extfunc', 'erlang:get_module_info/2')]),
         ],
         [
             ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', 'dict_list_merge'), 1]),
+            ('func_info', [('atom', module_name), ('atom', 'dict_list_merge'), 1]),
             ('label', []),
             ('allocate_zero', [2, 1]),
             ('move', [('x', 0), ('y', 1)]),
             ('call_ext', [0, ('extfunc', 'orddict:new/0')]),
             ('move', [('x', 0), ('y', 0)]),
-            ('make_fun2', [('prova', '-dict_list_merge/1-fun-0-/2')]),
+            ('make_fun2', [(module_name, '-dict_list_merge/1-fun-0-/2')]),
             ('move', [('y', 1), ('x', 2)]),
             ('move', [('y', 0), ('x', 1)]),
             ('call_ext_last', [3, ('extfunc', 'lists:foldl/3'), 2]),
         ],
         [
             ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', 'dict_merge'), 2]),
+            ('func_info', [('atom', module_name), ('atom', 'dict_merge'), 2]),
             ('label', []),
             ('allocate', [2, 2]),
             ('move', [('x', 1), ('y', 0)]),
             ('move', [('x', 0), ('y', 1)]),
-            ('make_fun2', [('prova', '-dict_merge/2-fun-0-/3')]),
+            ('make_fun2', [(module_name, '-dict_merge/2-fun-0-/3')]),
             ('move', [('y', 0), ('x', 2)]),
             ('move', [('y', 1), ('x', 1)]),
             ('call_ext_last', [3, ('extfunc', 'orddict:merge/3'), 2]),
         ],
         [
             ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', '-dict_merge/2-fun-0-'), 3]),
+            ('func_info', [('atom', module_name), ('atom', '-dict_merge/2-fun-0-'), 3]),
             ('label', []),
             ('move', [('x', 2), ('x', 0)]),
             ('return', []),
         ],
         [
             ('label', []),
-            ('func_info', [('atom', 'prova'), ('atom', '-dict_list_merge/1-fun-0-'), 2]),
+            ('func_info', [('atom', module_name), ('atom', '-dict_list_merge/1-fun-0-'), 2]),
             ('label', []),
-            ('call_only', [2, ('prova', 'dict_merge/2')]),
+            ('call_only', [2, (module_name, 'dict_merge/2')]),
         ],
         ]
 

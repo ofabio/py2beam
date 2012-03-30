@@ -131,9 +131,8 @@ class BeamReader:
             if opcode == 0:
                 break
             #print opcode
-            
             if not opcode in self.commands:
-                print opcode
+                print 'opcode unknown: %s' % opcode
                 continue
             for i in range(self.commands[opcode]['n_params']):
                 l = self.read_byte_value(gen)
