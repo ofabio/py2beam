@@ -22,9 +22,9 @@ class Composer:
 
     def generate(self):
         code = self.tree.generate()
-
+        
         code += (self.utility_code())
-
+        
         code = self.assign_labels(code)
         
         self.print_code(code)

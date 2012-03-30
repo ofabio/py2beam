@@ -10,8 +10,13 @@ Copyright (c) 2012 ofabio. All rights reserved.
 from structures import *
 from composer import Composer
 
+def compose():
+    composer = Composer(tree)
+    composer.generate()
+    composer.write('prova.beam')
 
 def test1():
+    global tree
     print '-- TEST 1 --'
     print 'output would be...'
     
@@ -37,12 +42,9 @@ def test1():
             Print(Var('d')),
         ]), Call('a', []),
     ])
-    
-    composer = Composer(tree)
-    composer.generate()
-    composer.write('prova.beam')
 
 def test2():
+    global tree
     print '-- TEST 2 --'
     print 'output would be...'
     
@@ -56,11 +58,33 @@ def test2():
         ])
     ])
     
-    composer = Composer(tree)
-    composer.generate()
-    composer.write('prova.beam')
+def test3():
+    global tree
+    print '-- TEST 3 --'
+    print 'output would be...'
+
+    a = 5
+    print a
+    for i in range(0, 2):
+        print i
+        print a
+        a = 7
+    print a
+    print '------------'
+
+    tree = Module([
+        Assign('a', 5),
+        Print(Var('a')),
+        For('i', Range(0, 2), [
+            Print(Var('i')),
+            Print(Var('a')),
+            Assign('a', 7),
+        ]),
+        Print(Var('a'))
+    ])
 
 def test4():
+    global tree
     print '-- TEST 4 --'
     print 'output would be...'
     
@@ -85,11 +109,8 @@ def test4():
         ]),
     ])
     
-    composer = Composer(tree)
-    composer.generate()
-    composer.write('prova.beam')
-    
 def test5():
+    global tree
     print '-- TEST 5 --'
     print 'output would be...'
 
@@ -111,6 +132,7 @@ def test5():
     composer.write('prova.beam')
 
 def test6():
+    global tree
     print '-- TEST 6 --'
     print 'output would be...'
 
@@ -134,12 +156,9 @@ def test6():
         Print(Call('hello', []))
     ])
 
-    composer = Composer(tree)
-    composer.generate()
-    composer.write('prova.beam')
-
 def main():
-    test6()
+    test3()
+    compose()
 
 if __name__ == '__main__':
     main()

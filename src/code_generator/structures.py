@@ -41,36 +41,10 @@ class Module:
         ]
 
         for b in body:
-            if b.__class__ in (Def,):
+            if b.__class__ in (Def, For):
                 b.output = output
                 b.ancestors = ['module']
-                # salva il riferimento alla nuova funzione: [name=fun1, deep=1].
-                # deep è la profondità che darà luogo la nuova funzione, nonchè il numero
-                # di insiemi di variabili da trasportare, a partire da quello di livello
-                # modulo in su!
-                code += [
-                    ('move', [('integer', 1), ('x', 0)]),
-                    ('put_list', [('x', 0), ('nil', None), ('x', 0)]),
-                    ('put_list', [('atom', b.name), ('x', 0), ('x', 0)]),
-                ]
-                code += assign_local(b.assign_to)
-                
-                output.append(b.generate())
-            elif b.__class__ in (For,):
-                b.output = output
-                b.ancestors = ['module']
-                # passa al for (context, variabile su cui iterare il for)
-                code += b.items_list.generate()
-                code += [
-                    ('move', [('x', 0), ('x', 1)]),
-                    ('move', [('y', 0), ('x', 0)]),
-                    ('call', [2, ('prova', '%s/%d' % (b.name, 2))]),
-                    ('move', [('x', 0), ('y', 0)]),
-                ]
-            
-                output.append(b.generate())
-            else:
-                code += b.generate()
+            code += b.generate()
 
         code += [
             ('move', [('atom', 'ok'), ('x', 0)]),
@@ -94,6 +68,10 @@ class Def:
         self.ancestors = []
 
     def generate(self):
+        self.to_base()
+        return self.inline()
+        
+    def to_base(self):
         output = self.output
         body = self.body
         params = self.params
@@ -133,38 +111,29 @@ class Def:
         code += [('put_list', [('x', 0), ('y', 0), ('y', 0)]),]
         
         for b in body:
-            if b.__class__ in (Def,):
+            if b.__class__ in (Def, For):
                 b.output = output
                 b.ancestors = self.ancestors + [self.name]
-                code += [
-                    ('move', [('integer', len(b.ancestors)), ('x', 0)]),
-                    ('put_list', [('x', 0), ('nil', None), ('x', 0)]),
-                    ('put_list', [('atom', b.name), ('x', 0), ('x', 0)]),
-                ]
-                code += assign_local(b.assign_to)
-                
-                self.output.append(b.generate())
-            elif b.__class__ in (For,):
-                b.output = output
-                b.ancestors = self.ancestors + [self.name]
-            
-                # passa al for (context; variabile su cui iterare il for)
-                code += [
-                    ('move', [('x', 0), ('x', 1)]),
-                    ('move', [('y', 0), ('x', 0)])
-                    ('call', [2, ('prova', '%s/%d' % (b.name, 2))]),
-                    ('move', [('x', 0), ('y', 0)]),
-                ]
-            
-                output.append(b.generate())
-            else:
-                code += b.generate()
+            code += b.generate()
                 
         code += [
             ('move', [('atom', 'None'), ('x', 0)]),
             ('deallocate', [heap]),
             ('return', []),
         ]
+        output.append(code)
+        
+    def inline(self):
+        # salva il riferimento alla nuova funzione: [name=fun1, deep=1].
+        # deep è la profondità che darà luogo la nuova funzione, nonchè il numero
+        # di insiemi di variabili da trasportare, a partire da quello di livello
+        # modulo in su!
+        code = [
+            ('move', [('integer', len(self.ancestors)), ('x', 0)]),
+            ('put_list', [('x', 0), ('nil', None), ('x', 0)]),
+            ('put_list', [('atom', self.name), ('x', 0), ('x', 0)]),
+        ]
+        code += assign_local(self.assign_to)
         return code
 
 class For:
@@ -178,8 +147,12 @@ class For:
         self.item = item
         self.items_list = items_list
         self.body = body
-        
+    
     def generate(self):
+        self.to_base()
+        return self.inline()
+
+    def to_base(self):
         # for (context, list)
         output = self.output
         item = self.item
@@ -201,32 +174,10 @@ class For:
         code += assign_local(self.item)
 
         for b in body:
-            if b.__class__ in (Def,):
+            if b.__class__ in (Def, For):
                 b.output = output
-                b.ancestors = self.ancestors
-                code += [
-                    ('move', [('integer', len(b.ancestors)), ('x', 0)]),
-                    ('put_list', [('x', 0), ('nil', None), ('x', 0)]),
-                    ('put_list', [('atom', b.name), ('x', 0), ('x', 0)]),
-                ]
-                code += assign_local(b.assign_to)
-                
-                self.output.append(b.generate())
-            elif b.__class__ in (For,):
-                b.output = output
-                b.ancestors = self.ancestors
-            
-                # passa al for (context; variabile su cui iterare il for)
-                code += [
-                    ('move', [('x', 0), ('x', 1)]),
-                    ('move', [('y', 0), ('x', 0)])
-                    ('call', [2, ('prova', '%s/%d' % (b.name, 2))]),
-                    ('move', [('x', 0), ('y', 0)]),
-                ]
-            
-                self.output.append(b.generate())
-            else:
-                code += b.generate()
+                b.ancestors = self.ancestors + [self.name]
+            code += b.generate()
                 
         
         code += [
@@ -240,7 +191,17 @@ class For:
         ]
 
         For.label += 2
-
+        output.append(code)
+        
+    def inline(self):
+        # passa al for (context, variabile su cui iterare il for)
+        code = self.items_list.generate()
+        code += [
+            ('move', [('x', 0), ('x', 1)]),
+            ('move', [('y', 0), ('x', 0)]),
+            ('call', [2, ('prova', '%s/%d' % (self.name, 2))]),
+            ('move', [('x', 0), ('y', 0)]),
+        ]
         return code
 
 class Call:
