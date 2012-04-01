@@ -138,7 +138,7 @@ class BeamEncoder():
                         type_ = param[0]
                         val = param[1]
                     p = getattr(self, type_)(val)
-                    if type(p) == tuple:
+                    if type(p) in (tuple, list):
                         param_r += p
                     else:
                         param_r.append(p)
@@ -172,7 +172,10 @@ class BeamEncoder():
         return n * 16 + 4
 
     def f(self, n):
-        return n * 16 + 5
+        if n > 15:
+            return (13, n)
+        else:
+            return n * 16 + 5
 
     def extfunc(self, fun):
         return self.pure(self.imports.index(fun))
@@ -194,7 +197,13 @@ class BeamEncoder():
         return n * 16 + 1
         
     def literal(self, n):
-        return 71
+        res = [71]
+        p = self.pure(n)
+        if type(p) == tuple:
+            res += p
+        else:
+            res.append(p)
+        return res
         
     def nil(self, n):
         return 2
@@ -208,10 +217,17 @@ if __name__ == '__main__':
     exports = ['for/1']
     locals_ = []
     lambdas = []
-    #literals = [ExternalTerm(String('yes')), ExternalTerm(List(List(Integer(5000), Tuple(Integer(1), Integer(2), Integer(3))))), ExternalTerm(String('~w~n'))]
+    #literals = [ExternalTerm(String('yes')), ExternalTerm(List(List(Integer(5000), Tuple(Integer(1), 
+    #            Integer(2), Integer(3))))), ExternalTerm(String('~w~n'))]
     literals = [ExternalTerm(String('~w~n'))]
     attributes = ExternalTerm(List(Tuple(Atom('vsn'), List(Big(10355834843103504983582285655618377565L)))))
-    compile_info = ExternalTerm(List(Tuple(Atom('options'),Nil()),Tuple(Atom('version'),String('4.8')),Tuple(Atom('time'),Tuple(Integer(2012),Integer(3),Integer(8),Integer(21),Integer(1),Integer(28))),Tuple(Atom('source'),String('/Users/fabio/Programmazione/ErlangWorld/beam exploration/code/8/prova.erl'))))
+    compile_info = ExternalTerm(List(
+            Tuple(Atom('options'), Nil()),
+            Tuple(Atom('version'), String('4.8')), Tuple(
+                Atom('time'),
+                Tuple(Integer(2012), Integer(3), Integer(8), Integer(21), Integer(1), Integer(28))
+            ), Tuple(Atom('source'),
+            String('/Users/fabio/Programmazione/ErlangWorld/beam exploration/code/8/prova.erl'))))
 
     code = [
             [ # for/1

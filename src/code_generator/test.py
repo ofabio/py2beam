@@ -175,9 +175,36 @@ def test7():
         ]),
         Call('ciao', [Var('a')]),
     ])
+    
+def test8():
+    global tree
+    print '-- TEST 8 --'
+    print 'output would be...'
 
+    print 5 + 7
+
+    print '------------'
+
+    tree = Module([
+        Print(Sum(5, 7))
+    ])
+
+def test9():
+    global tree
+    print '-- TEST 9 --'
+    print 'output would be...'
+
+    print "ciao " + "fabio"
+
+    print '------------'
+
+    tree = Module([
+        Print(Sum("ciao ", "fabio"))
+        #Print(Sum(1, 2))
+    ])
+    
 def main():
-    test1()
+    test9()
     compose()
 
 if __name__ == '__main__':

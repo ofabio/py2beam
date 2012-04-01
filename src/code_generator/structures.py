@@ -146,13 +146,12 @@ class Def:
         return code
 
 class For:
-    label = 1
     name_num = 1
 
     def __init__(self, item, items_list, body):
         self.module_name = None
         self.output = None
-        self.name = "for%d" % For.name_num
+        self.name = "for__%d" % For.name_num
         For.name_num += 1
         self.item = item
         self.items_list = items_list
@@ -171,10 +170,10 @@ class For:
         body = self.body
         
         code = [
-            ('label', [For.label]),
+            ('label', ['%s:%d' % (self.name, 0)]),
             ('func_info', [('atom', module_name), ('atom', self.name), 2]),
             ('label', []),
-            ('is_nonempty_list', [('f', For.label + 1), ('x', 1)]),
+            ('is_nonempty_list', [('f', '%s:%d' % (self.name, 1)), ('x', 1)]),
             ('allocate', [heap, 0]),
             ('move', [('nil', None), ('y', 2)]),
         ]
@@ -197,13 +196,12 @@ class For:
             ('move', [('y', 0), ('x', 0)]),
             ('move', [('y', 1), ('x', 1)]),
             ('call_last', [3, (module_name, self.name + '/2'), heap]),
-            ('label', [For.label + 1]),
-            ('is_nil', [('f', For.label), ('x', 1)]),
+            ('label', ['%s:%d' % (self.name, 1)]),
+            ('is_nil', [('f', '%s:%d' % (self.name, 0)), ('x', 1)]),
             #('move', [('y', 0), ('x', 0)]), dovrebbe non essere necessario!
             ('return', []),
         ]
 
-        For.label += 2
         output.append(code)
         
     def inline(self):
@@ -277,7 +275,7 @@ class Call:
 def print_register((r, n)):
     return [
         ('put_list', [(r, n), ('nil', None), ('x', 1)]),
-        ('move', [('literal', None), 0]),
+        ('move', [('literal', '~w~n')]),
         ('int_code_end', []),
         ('call_ext', [2, ('extfunc', 'io:format/2')]),
     ]
@@ -318,6 +316,8 @@ def evaluate(module_name, obj):
         code += [('move', [('integer', obj), ('x', 0)])]
     elif type(obj) == float:
         code += [('move', [('float', obj), ('x', 0)])]
+    elif type(obj) == str:
+        code += [('move', [('literal', obj), ('x', 0)])]
     else:
         obj.module_name = module_name
         code += obj.generate()
@@ -353,16 +353,10 @@ def assign_local(var):
 class Range:
     def __init__(self, obj1, obj2):
         self.module_name = None
-        #self.start = start
-        #self.stop = stop - 1
         self.obj1 = obj1
         self.obj2 = obj2
 
     def generate(self):
-        #code = [
-        #    ('move', [('integer', self.start), ('x', 0)]),
-        #    ('move', [('integer', self.stop), ('x', 1)]),
-        #]
         code = list()
         code += evaluate(self.module_name, self.obj1)
         code += to_stack()
@@ -388,6 +382,30 @@ class Range:
             ('call_ext', [3, ('extfunc', 'erlang:apply/3')]),
         ]
         return code
+        
+class Sum:
+    def __init__(self, obj1, obj2):
+        self.module_name = None
+        self.obj1 = obj1
+        self.obj2 = obj2
+        
+    def generate(self):
+        module_name = self.module_name
+        code = list()
+        #code += print_register(('y', 2)) ###
+        code += evaluate(self.module_name, self.obj1)
+        code += to_stack()
+        code += evaluate(self.module_name, self.obj2)
+        code += to_stack()
+        
+        code += from_stack(2)
+        
+        code += [
+            ('move', [('atom', module_name), ('x', 0)]),
+            ('move', [('atom', 'utility__sum__'), ('x', 1)]),
+            ('call_ext', [3, ('extfunc', 'erlang:apply/3')]),
+        ]
+        return code
 
 class Print:
     def __init__(self, obj=None):
@@ -395,11 +413,12 @@ class Print:
         self.obj = obj
 
     def generate(self):
-        code = evaluate(self.module_name, self.obj)
+        code = list()
+        code += evaluate(self.module_name, self.obj)
 
         code += [
             ('put_list', [('x', 0), ('nil', None), ('x', 1)]),
-            ('move', [('literal', None), 0]),
+            ('move', [('literal', '~p~n')]),
             ('int_code_end', []),
             ('call_ext', [2, ('extfunc', 'io:format/2')]),
         ]

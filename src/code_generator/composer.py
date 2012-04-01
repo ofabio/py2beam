@@ -26,15 +26,19 @@ class Composer:
         code = self.tree.generate()
         
         code += (self.utility_code())
+        code += (self.optional_code())
         
         code = self.assign_labels(code)
         
-        self.print_code(code)
+        #self.print_code(code)
         
         hb = HeaderBuilder(code)
         h = hb.get_header()
         self.print_header(h)
         
+        self.print_code(code)
+        
+        h['literals'] = [ExternalTerm(String(l)) for l in h['literals']]
         be = BeamEncoder(h['atoms'], code, h['imports'], h['exports'], h['literals'], h['locals'], 
                          h['attributes'], h['compile_info'])
         be.make_binary()
@@ -105,7 +109,29 @@ class Composer:
             ('call_only', [2, (module_name, 'dict_merge/2')]),
         ],
         ]
-
+        return code
+        
+    def optional_code(self):
+        module_name = self.module_name
+        f = lambda x: '%s:%d' % ('sum', x)
+        code = [
+        [
+            ('label', []),
+            ('func_info', [('atom', module_name), ('atom', 'utility__sum__'), 2]),
+            ('label', []),
+            ('is_number', [('f', f(0)), ('x', 0)]),
+            ('is_number', [('f', f(0)), ('x', 1)]),
+            ('gc_bif2', [('f', 0), 2, ('extfunc', 'erlang:+/2'), ('x', 0), ('x', 1), ('x', 0)]),
+            ('return', []),
+            ('label', [f(0)]),
+            ('is_list', [('f', f(1)), ('x', 0)]),
+            ('is_list', [('f', f(1)), ('x', 1)]),
+            ('call_ext_only', [2, ('extfunc', 'string:concat/2')]),
+            ('label', [f(1)]),
+            ('move', [('atom', 'mathematical_operation_unhandled'), ('x', 0)]),
+            ('call_ext_only', [1, ('extfunc', 'erlang:error/1')]),
+        ],
+        ]
         return code
 
     def assign_labels(self, output):
@@ -167,6 +193,7 @@ class HeaderBuilder:
         imports = set()
         exports = list()
         locals_ = list()
+        literals = list()
         
         for fun in self.code:
             for instr in fun:
@@ -175,7 +202,9 @@ class HeaderBuilder:
                 (exp, loc) = self.add_exports_and_locals(instr)
                 exports += exp
                 locals_ += loc
+                self.feed_literals(literals, instr)
                 
+        # sposta l'atomo del nome_modulo al primo posto
         atomsl = list(atoms)
         del(atomsl[atomsl.index(self.mod_name)])
         atomsl.insert(0, self.mod_name)
@@ -185,7 +214,7 @@ class HeaderBuilder:
         h['exports'] = exports
         h['locals'] = locals_
         
-        h['literals'] = [ExternalTerm(String('~w~n')), ExternalTerm(Integer(0)), ExternalTerm(Integer(10))]
+        h['literals'] = literals
         
         h['attributes'] = ExternalTerm(List(Tuple(Atom('vsn'), 
                             List(Big(10355834843103504983582285655618377565L)))))
@@ -230,12 +259,23 @@ class HeaderBuilder:
         loc = list()
         if instr[0] == 'func_info':
             func_name = '%s/%d' % (instr[1][1][1], instr[1][2])
-            if func_name.startswith('module') or func_name.startswith('fun__'):
+            if (func_name.startswith('module') or func_name.startswith('fun__') or 
+                func_name.startswith('utility__')):
                 exp.append(func_name)
             else:
                 loc.append(func_name)
         return (exp, loc)
         
+    def feed_literals(self, literals, instr):
+        if instr[0] in ('move', 'get_list', 'put_list'):
+            params = instr[1]
+            for p in params:
+                if type(p) == tuple and p[0] == 'literal' and not p[1] in literals:
+                    n_lit = len(literals)
+                    pos = params.index(p)
+                    del(params[pos])
+                    params.insert(pos, ('literal', n_lit))
+                    literals.append(p[1])
 
 if __name__ == '__main__':
     import test
