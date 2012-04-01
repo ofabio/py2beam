@@ -129,7 +129,10 @@ class Composer:
                 params = instr[1]
                 for param in params:
                     if type(param) == tuple and param[0] == 'f':
-                        new_param = (param[0], labels[param[1]])
+                        if param[1] == 0:
+                            new_param = (param[0], 0)
+                        else:
+                            new_param = (param[0], labels[param[1]])
                         params[params.index(param)] = new_param
         return output
         
@@ -216,7 +219,7 @@ class HeaderBuilder:
 
     def add_imports(self, instr):
         res = list()
-        if 'ext' in instr[0]:
+        if 'ext' in instr[0] or instr[0] == 'gc_bif2':
             for p in instr[1]:
                 if type(p) == tuple and p[0] == 'extfunc':
                     res.append(p[1])

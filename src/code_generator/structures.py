@@ -31,11 +31,14 @@ class Module:
             ('func_info', [('atom', module_name), ('atom', 'module'), 0]),
             ('label', []),
             ('allocate', [heap, 0]),  # alloco n y!
+            ('move', [('nil', None), ('y', 2)]),
         ]
 
         # y0 contiene una lista di dizionari, ciascuno dei quali rappresenta l'insieme delle
         # variabili e delle funzioni definite ad un certo livello di profondità. Nel complesso
         # y0 contiene tutti i simboli a disposizione della funzione
+        # y1 viene usato per contenere la lista su cui iterare nel for
+        # y2 viene usato come stack per le chiamate a funzione
         code += [
             ('call_ext', [0, ('extfunc', 'orddict:new/0')]),
             ('put_list', [('x', 0), ('nil', None), ('y', 0)]),
@@ -85,6 +88,7 @@ class Def:
             ('func_info', [('atom', module_name), ('atom', self.name), 2]),
             ('label', []),
             ('allocate', [heap, 0]),
+            ('move', [('nil', None), ('y', 2)]),
         ]
 
         # memorizzo in ('y', 0) il contesto a cui aggiungo un nuovo dizionario 
@@ -172,6 +176,7 @@ class For:
             ('label', []),
             ('is_nonempty_list', [('f', For.label + 1), ('x', 1)]),
             ('allocate', [heap, 0]),
+            ('move', [('nil', None), ('y', 2)]),
         ]
         
         code += [
@@ -214,76 +219,68 @@ class For:
         return code
 
 class Call:
-    def __init__(self, called, params):
+    def __init__(self, target, params):
         self.module_name = None
-        self.called = called
+        self.target = target
         self.params = params
 
     def generate(self):
         module_name = self.module_name
-        called = self.called
+        target = self.target
         params = self.params
         
-        code = []
+        code = list()
+        
+        for p in params:
+            code += evaluate(self.module_name, p)
+            code += to_stack()
+        
+        code += from_stack(len(params))
+        # x0->params_list
+        code += [('move', [('x', 2), ('y', 3)])]
+        ###code += print_register(('y', 3))
         
         code += merge_context(module_name)
-        code += get_from_context(called)
+        code += get_from_context(target)
         
         # ho ottenuto il riferimento alla funzione ovvero una lista [name, deep].
         code += [
-            ('get_list', [('x', 0), ('y', 3), ('x', 0)]),
             ('get_list', [('x', 0), ('y', 4), ('x', 0)]),
+            ('get_list', [('x', 0), ('y', 5), ('x', 0)]),
         ]
-        # y3->name y4->deep
+        # y3->params_list, y4->name, y5->deep
         
-        # prepara il sottinsieme del contesto da passare alla funzione
+        # prepara il sottinsieme (anche improprio) del contesto da passare alla funzione
         code += [
             ('move', [('y', 0), ('x', 0)]),
             ('call_ext', [1, ('extfunc', 'lists:reverse/1')]),
-            ('move', [('y', 4), ('x', 1)]),
+            ('move', [('y', 5), ('x', 1)]),
             ('call_ext', [2, ('extfunc', 'lists:sublist/2')]),
             ('call_ext', [1, ('extfunc', 'lists:reverse/1')]),
             ('move', [('x', 0), ('y', 5)]),
         ]
-        # y5->new_context
+        # y3->params_list, y4->name, y5->new_context
         
-        # recupero dal contesto il valore di ciascuna variabile da passare e li inserisco
-        # in una nuova lista. verrà infine costituita una lista contenente il contesto e
-        # la suddetta lista di parametri
+        # costruisco la lista finale
         code += [
-            ('move', [('y', 0), ('x', 0)]),
-            ('call', [1, (module_name, 'dict_list_merge/1')]),
-            ('move', [('x', 0), ('y', 6)]),
-        ]
-        # y6->merged_context
-        
-        code += [('move', [('nil', None), ('y', 4)]),]
-        # y4 -> empty_list
-        
-        for p in params:
-            code += [
-                ('move', [('y', 6), ('x', 1)]),
-                ('move', [('atom', p), ('x', 0)]),
-                ('call_ext', [2, ('extfunc', 'orddict:fetch/2')]),
-                ('put_list', [('x', 0), ('y', 4), ('y', 4)]),
-            ]
-            
-        # costruisce la lista finale
-        code += [
-            ('move', [('y', 4), ('x', 0)]),
-            ('call_ext', [1, ('extfunc', 'lists:reverse/1')]),
-            ('put_list', [('x', 0), ('nil', None), ('y', 6)]),
-            ('put_list', [('y', 5), ('y', 6), ('x', 0)]),
-            
+            ('put_list', [('y', 3), ('nil', None), ('y', 3)]),
+            ('put_list', [('y', 5), ('y', 3), ('x', 2)]),
         ]
         
         code += [
-            ('move', [('x', 0), ('x', 2)]),
             ('move', [('atom', module_name), ('x', 0)]),
-            ('move', [('y', 3), ('x', 1)]),
+            ('move', [('y', 4), ('x', 1)]),
             ('call_ext', [3, ('extfunc', 'erlang:apply/3')]),
         ]
         return code
+
+def print_register((r, n)):
+    return [
+        ('put_list', [(r, n), ('nil', None), ('x', 1)]),
+        ('move', [('literal', None), 0]),
+        ('int_code_end', []),
+        ('call_ext', [2, ('extfunc', 'io:format/2')]),
+    ]
 
 class Return:
     def __init__(self, obj=None):
@@ -325,6 +322,19 @@ def evaluate(module_name, obj):
         obj.module_name = module_name
         code += obj.generate()
     return code
+    
+def to_stack():
+    return [('put_list', [('x', 0), ('y', 2), ('y', 2)])]
+    
+def from_stack(n):
+    """poppa dallo stack (y, 2) n parametri e li mette in una nuova lista su (x, 2)"""
+    code = [('move', [('nil', None), ('x', 2)])]
+    for i in range(n):
+        code += [        
+            ('get_list', [('y', 2), ('x', 0), ('y', 2)]),
+            ('put_list', [('x', 0), ('x', 2), ('x', 2)]),
+        ]
+    return code
 
 def assign_local(var):
     return [
@@ -341,18 +351,42 @@ def assign_local(var):
     ]
 
 class Range:
-    def __init__(self, start, stop):
+    def __init__(self, obj1, obj2):
         self.module_name = None
-        self.start = start
-        self.stop = stop - 1
+        #self.start = start
+        #self.stop = stop - 1
+        self.obj1 = obj1
+        self.obj2 = obj2
 
     def generate(self):
-        code = [
-            ('move', [('integer', self.start), ('x', 0)]),
-            ('move', [('integer', self.stop), ('x', 1)]),
+        #code = [
+        #    ('move', [('integer', self.start), ('x', 0)]),
+        #    ('move', [('integer', self.stop), ('x', 1)]),
+        #]
+        code = list()
+        code += evaluate(self.module_name, self.obj1)
+        code += to_stack()
+        code += evaluate(self.module_name, self.obj2)
+        code += to_stack()
+        
+        code += from_stack(2)
+        
+        # sottrae 1 all'estremo destro
+        code += [
+            ('get_list', [('x', 2), ('y', 3), ('x', 2)]),
+            ('get_list', [('x', 2), ('y', 4), ('x', 2)]),
+            ('gc_bif2', [('f', 0), 1, ('extfunc', 'erlang:-/2'), 
+                ('y', 4), ('integer', 1), ('y', 4)]),
+            ('move', [('nil', None), ('x', 2)]),
+            ('put_list', [('y', 4), ('x', 2), ('x', 2)]),
+            ('put_list', [('y', 3), ('x', 2), ('x', 2)]),
         ]
-
-        code += [('call_ext', [2, ('extfunc', 'lists:seq/2')])]
+        
+        code += [
+            ('move', [('atom', 'lists'), ('x', 0)]),
+            ('move', [('atom', 'seq'), ('x', 1)]),
+            ('call_ext', [3, ('extfunc', 'erlang:apply/3')]),
+        ]
         return code
 
 class Print:
@@ -390,16 +424,22 @@ class Debug:
 
     def generate(self):
         what = self.what
-        
+        code = list()
         if what == "context":
-            code = [
+            code += [
                 ('put_list', [('y', 0), ('nil', None), ('x', 1)]),
-                ('move', [('literal', None), 0]),
-                ('int_code_end', []),
-                ('call_ext', [2, ('extfunc', 'io:format/2')]),
+            ]
+        elif what == 'stack':
+            code += [
+                ('put_list', [('y', 2), ('nil', None), ('x', 1)]),
             ]
         else:
             raise Exception('debug what??')
+        code += [
+            ('move', [('literal', None), 0]),
+            ('int_code_end', []),
+            ('call_ext', [2, ('extfunc', 'io:format/2')]),
+        ]
         return code
 
 def merge_context(module_name):

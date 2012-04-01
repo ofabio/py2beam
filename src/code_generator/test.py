@@ -11,7 +11,7 @@ from structures import *
 from composer import Composer
 
 def compose():
-    composer = Composer('fabio', tree)
+    composer = Composer('prova', tree)
     composer.generate()
     composer.write()
 
@@ -36,7 +36,7 @@ def test1():
             Print(1),
             Assign('c', 5),
             Assign('d', 8),
-            Call('b', ['c', 'd'])]),
+            Call('b', [Var('c'), Var('d')])]),
         Def('b', ['c', 'd'], [
             Print(Var('c')),
             Print(Var('d')),
@@ -151,9 +151,29 @@ def test6():
         ]),
         Def('hello', [], [
             Assign('a', 5),
-            Return(Call('add', ['a']))
+            Return(Call('add', [Var('a')]))
         ]),
         Print(Call('hello', []))
+    ])
+    
+def test7():
+    global tree
+    print '-- TEST 7 --'
+    print 'output would be...'
+    
+    a = 5
+    def ciao(a):
+        print a
+    ciao(a)
+
+    print '------------'
+
+    tree = Module([
+        Assign('a', 5),
+        Def('ciao', ['a'], [
+            Print(Var('a'))
+        ]),
+        Call('ciao', [Var('a')]),
     ])
 
 def main():
