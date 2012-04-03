@@ -22,3 +22,18 @@ def module():
 def __f1(context):
      merge = reduce(lambda x, y: dict(x.items()+y.items()), context)
     print merge['t']
+
+
+HEAP
+(y,0) memoria
+(y,1) contesto
+(y,2) lista per il for / condizioni per l'if
+(y,3) stack per le chiamate annidate
+
+(y,4) temporaneo
+(y,5) temporaneo
+(y,6) temporaneo
+(y,7) temporaneo
+
+# (y,1) contiene una lista di dizionari, ciascuno dei quali rappresenta l'insieme delle
+# variabili e delle funzioni definite ad un certo livello di profondità.
