@@ -80,7 +80,10 @@ class BeamDecoder:
                 
             elif mem == 13:
                 # extended_numbering for local call
-                return (atoms[0], labels[p])
+                if opname.startswith('call'):
+                    return (atoms[0], labels[p])
+                else:
+                    return ('f', p)
 
         if p == 2:
             return ('nil', None)

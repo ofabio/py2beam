@@ -12,6 +12,7 @@ import os
 dirname = os.path.dirname
 ROOT_FOLDER = dirname(dirname(__file__))
 sys.path.append(ROOT_FOLDER)
+from helpers import *
 from beam.assembler.beam_encoder import *
 
 heap = 7
@@ -46,7 +47,7 @@ class Module:
 
         for b in body:
             b.module_name = module_name
-            if b.__class__ in (Def, For):
+            if b.__class__ in (Def, For, If):
                 b.output = output
                 b.ancestors = ['module']
             code += b.generate()
@@ -120,7 +121,7 @@ class Def:
         
         for b in body:
             b.module_name = self.module_name
-            if b.__class__ in (Def, For):
+            if b.__class__ in (Def, For, If):
                 b.output = output
                 b.ancestors = self.ancestors + [self.name]
             code += b.generate()
@@ -166,7 +167,6 @@ class For:
         module_name = self.module_name
         output = self.output
         item = self.item
-        items_list = self.items_list
         body = self.body
         
         code = [
@@ -186,7 +186,7 @@ class For:
 
         for b in body:
             b.module_name = self.module_name
-            if b.__class__ in (Def, For):
+            if b.__class__ in (Def, For, If):
                 b.output = output
                 b.ancestors = self.ancestors + [self.name]
             code += b.generate()
@@ -198,7 +198,7 @@ class For:
             ('call_last', [3, (module_name, self.name + '/2'), heap]),
             ('label', ['%s:%d' % (self.name, 1)]),
             ('is_nil', [('f', '%s:%d' % (self.name, 0)), ('x', 1)]),
-            #('move', [('y', 0), ('x', 0)]), dovrebbe non essere necessario!
+            #('move', [('y', 0), ('x', 0)]), non è necessario!
             ('return', []),
         ]
 
@@ -216,6 +216,113 @@ class For:
         ]
         return code
 
+
+class If:
+    name_num = 1
+
+    def __init__(self, conds, bodies):
+        self.module_name = None
+        self.output = None
+        self.name = "if__%d" % If.name_num
+        If.name_num += 1
+        self.conds = conds
+        self.bodies = bodies
+    
+    def generate(self):
+        self.to_base()
+        return self.inline()
+
+    def to_base(self):
+        # for (context, list)
+        module_name = self.module_name
+        output = self.output
+        bodies = self.bodies
+        conds = self.conds
+        f = lambda x: '%s:%d' % (self.name, x)
+        
+        code = [
+            ('label', []), #f(0)
+            ('func_info', [('atom', module_name), ('atom', self.name), 2]),
+            ('label', []),
+            ('allocate', [heap, 0]),
+            # contesto
+            ('move', [('x', 0), ('y', 0)]),
+            # lista condizioni
+            ('move', [('x', 1), ('y', 1)]),
+            # stack
+            ('move', [('nil', None), ('y', 2)]),
+        ]
+        
+        for i in range(len(conds)):
+            b = bodies[i]
+            code += [
+                ('get_list', [('y', 1), ('x', 0), ('y', 1)]),
+                ('is_eq_exact', [('f', f(i)), ('x', 0), ('atom', 'true')]),
+            ]
+            b.module_name = self.module_name
+            code += b.generate()
+            code += [
+                ('move', [('y', 0), ('x', 0)]),
+                ('deallocate', [heap]),
+                ('return', []),
+                ('label', [f(i)]),
+            ]
+            
+        if len(bodies) == len(conds) + 1:
+            b = bodies[-1]
+            b.module_name = self.module_name
+            code += b.generate()
+        
+        code += [
+            ('move', [('y', 0), ('x', 0)]),
+            ('deallocate', [heap]),
+            ('return', []),
+        ]
+        
+        output.append(code)
+
+    def inline(self):
+        module_name = self.module_name
+        conds = self.conds
+        # passa all'if (context, lista dei risultati delle condizioni)
+        code = list()
+        for c in conds:
+            code += evaluate(module_name, c)
+            code += to_stack()
+        code += from_stack(len(conds))
+        code += [
+            ('move', [('x', 2), ('x', 1)]),
+            ('move', [('y', 0), ('x', 0)]),
+            ('call', [2, (module_name, '%s/%d' % (self.name, 2))]),
+            ('move', [('x', 0), ('y', 0)]),
+        ]
+        return code
+        
+        
+## just inline code methods ##
+
+class Grt:
+    def __init__(self, obj1, obj2):
+        self.module_name = None
+        self.obj1 = obj1
+        self.obj2 = obj2
+    
+    def generate(self):
+        code = list()
+        code += evaluate(self.module_name, self.obj1)
+        code += to_stack()
+        code += evaluate(self.module_name, self.obj2)
+        code += to_stack()
+        
+        code += from_stack(2)
+        
+        code += [
+            ('get_list', [('x', 2), ('x', 0), ('x', 2)]),
+            ('get_list', [('x', 2), ('x', 1), ('x', 2)]),
+            ('bif2', [('f', 0), ('extfunc', 'erlang:>/2'), ('x', 0), ('x', 1), ('x', 0)]),
+        ]
+        return code
+                
 class Call:
     def __init__(self, target, params):
         self.module_name = None
@@ -272,14 +379,6 @@ class Call:
         ]
         return code
 
-def print_register((r, n)):
-    return [
-        ('put_list', [(r, n), ('nil', None), ('x', 1)]),
-        ('move', [('literal', '~w~n')]),
-        ('int_code_end', []),
-        ('call_ext', [2, ('extfunc', 'io:format/2')]),
-    ]
-
 class Return:
     def __init__(self, obj=None):
         self.module_name = None
@@ -310,45 +409,7 @@ class Assign:
         
         return code
 
-def evaluate(module_name, obj):
-    code = []
-    if type(obj) == int:
-        code += [('move', [('integer', obj), ('x', 0)])]
-    elif type(obj) == float:
-        code += [('move', [('float', obj), ('x', 0)])]
-    elif type(obj) == str:
-        code += [('move', [('literal', obj), ('x', 0)])]
-    else:
-        obj.module_name = module_name
-        code += obj.generate()
-    return code
-    
-def to_stack():
-    return [('put_list', [('x', 0), ('y', 2), ('y', 2)])]
-    
-def from_stack(n):
-    """poppa dallo stack (y, 2) n parametri e li mette in una nuova lista su (x, 2)"""
-    code = [('move', [('nil', None), ('x', 2)])]
-    for i in range(n):
-        code += [        
-            ('get_list', [('y', 2), ('x', 0), ('y', 2)]),
-            ('put_list', [('x', 0), ('x', 2), ('x', 2)]),
-        ]
-    return code
 
-def assign_local(var):
-    return [
-        # estraggo la parte locale dal contesto
-        ('get_list', [('y', 0), ('x', 2), ('y', 0)]),
-        
-        # inserisco la nuova variabile, tramite -> orddict:store('A', A, D0)
-        ('move', [('x', 0), ('x', 1)]),
-        ('move', [('atom', var), ('x', 0)]),
-        ('call_ext', [3, ('extfunc', 'orddict:store/3')]),
-        
-        # rimetto la parte locale nel contesto
-        ('put_list', [('x', 0), ('y', 0), ('y', 0)]),
-    ]
 
 class Range:
     def __init__(self, obj1, obj2):
@@ -455,25 +516,11 @@ class Debug:
         else:
             raise Exception('debug what??')
         code += [
-            ('move', [('literal', None), 0]),
+            ('move', [('literal', '~w~n')]),
             ('int_code_end', []),
             ('call_ext', [2, ('extfunc', 'io:format/2')]),
         ]
         return code
-
-def merge_context(module_name):
-    return [
-        ('move', [('y', 0), ('x', 0)]),
-        ('call', [1, (module_name, 'dict_list_merge/1')]),
-    ]
-
-def get_from_context(var):
-    return [
-        # orddict:fetch('A', Dict)
-        ('move', [('x', 0), ('x', 1)]),
-        ('move', [('atom', var), ('x', 0)]),
-        ('call_ext', [2, ('extfunc', 'orddict:fetch/2')]),
-    ]
     
 
 if __name__ == '__main__':

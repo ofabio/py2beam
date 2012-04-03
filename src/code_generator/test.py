@@ -200,11 +200,28 @@ def test9():
 
     tree = Module([
         Print(Sum("ciao ", "fabio"))
-        #Print(Sum(1, 2))
+    ])
+    
+def test10():
+    global tree
+    print '-- TEST 10 --'
+    print 'output would be...'
+
+    a = 5
+    if a > 7:
+        print ">7"
+    else:
+        print "else!"
+
+    print '------------'
+
+    tree = Module([
+        Assign('a', 5),
+        If([Grt(Var('a'), 7)], [Print(">7"), Print("else!")]),
     ])
     
 def main():
-    test9()
+    test10()
     compose()
 
 if __name__ == '__main__':

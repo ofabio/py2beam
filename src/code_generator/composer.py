@@ -248,7 +248,7 @@ class HeaderBuilder:
 
     def add_imports(self, instr):
         res = list()
-        if 'ext' in instr[0] or instr[0] == 'gc_bif2':
+        if 'ext' in instr[0] or 'bif2' in instr[0]:
             for p in instr[1]:
                 if type(p) == tuple and p[0] == 'extfunc':
                     res.append(p[1])
@@ -270,12 +270,15 @@ class HeaderBuilder:
         if instr[0] in ('move', 'get_list', 'put_list'):
             params = instr[1]
             for p in params:
-                if type(p) == tuple and p[0] == 'literal' and not p[1] in literals:
-                    n_lit = len(literals)
+                if type(p) == tuple and p[0] == 'literal':
+                    if p[1] in literals:
+                        n_lit = literals.index(p[1])
+                    else:
+                        n_lit = len(literals)
+                        literals.append(p[1])
                     pos = params.index(p)
                     del(params[pos])
                     params.insert(pos, ('literal', n_lit))
-                    literals.append(p[1])
 
 if __name__ == '__main__':
     import test
