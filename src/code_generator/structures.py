@@ -254,13 +254,13 @@ class If:
         ]
         
         for i in range(len(conds)):
-            b = bodies[i]
             code += [
                 ('get_list', [('y', 1), ('x', 0), ('y', 1)]),
                 ('is_eq_exact', [('f', f(i)), ('x', 0), ('atom', 'true')]),
             ]
-            b.module_name = self.module_name
-            code += b.generate()
+            for b in bodies[i]:
+                b.module_name = self.module_name
+                code += b.generate()
             code += [
                 ('move', [('y', 0), ('x', 0)]),
                 ('deallocate', [heap]),
@@ -269,9 +269,9 @@ class If:
             ]
             
         if len(bodies) == len(conds) + 1:
-            b = bodies[-1]
-            b.module_name = self.module_name
-            code += b.generate()
+            for b in bodies[-1]:
+                b.module_name = self.module_name
+                code += b.generate()
         
         code += [
             ('move', [('y', 0), ('x', 0)]),

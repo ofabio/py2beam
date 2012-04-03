@@ -211,13 +211,14 @@ def test10():
     if a > 7:
         print ">7"
     else:
+        print "->"
         print "else!"
 
     print '------------'
 
     tree = Module([
         Assign('a', 5),
-        If([Grt(Var('a'), 7)], [Print(">7"), Print("else!")]),
+        If([Grt(Var('a'), 7)], [[Print(">7")], [Print("->"), Print("else!")]]),
     ])
     
 def main():
