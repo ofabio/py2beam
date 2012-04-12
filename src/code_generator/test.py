@@ -33,14 +33,14 @@ def test1():
     
     tree = Module([
         Def('a', [], [
-            Print(1),
-            Assign('c', 5),
-            Assign('d', 8),
-            Call('b', [Var('c'), Var('d')])]),
+            Print(Int(1)),
+            Assign('c', Int(5)),
+            Assign('d', Int(8)),
+            Call(Var('b'), [Var('c'), Var('d')])]),
         Def('b', ['c', 'd'], [
             Print(Var('c')),
             Print(Var('d')),
-        ]), Call('a', []),
+        ]), Call(Var('a'), []),
     ])
 
 def test2():
@@ -53,7 +53,7 @@ def test2():
     print '------------'
     
     tree = Module([
-        For('i', Range(0, 2), [
+        For('i', Range(Int(0), Int(2)), [
             Print(Var('i')),
         ])
     ])
@@ -73,12 +73,12 @@ def test3():
     print '------------'
 
     tree = Module([
-        Assign('a', 5),
+        Assign('a', Int(5)),
         Print(Var('a')),
-        For('i', Range(0, 2), [
+        For('i', Range(Int(0), Int(2)), [
             Print(Var('i')),
             Print(Var('a')),
-            Assign('a', 7),
+            Assign('a', Int(7)),
         ]),
         Print(Var('a'))
     ])
@@ -99,12 +99,12 @@ def test4():
     
     tree = Module([
         Def('a', [], [
-            Print(5)
+            Print(Int(5)),
         ]),
-        For('l', Range(0, 2), [
-            Call('a', []),
+        For('l', Range(Int(0), Int(2)), [
+            Call(Var('a'), []),
             Def('a', [], [
-                Print(10)
+                Print(Int(10)),
             ])
         ]),
     ])
@@ -122,9 +122,9 @@ def test5():
 
     tree = Module([
         Def('hello', [], [
-            Return(5)
+            Return(Int(5))
         ]),
-        Print(Call('hello', []))
+        Print(Call(Var('hello'), []))
     ])
 
     composer = Composer('fabio', tree)
@@ -150,10 +150,10 @@ def test6():
             Return(Var('p'))
         ]),
         Def('hello', [], [
-            Assign('a', 5),
-            Return(Call('add', [Var('a')]))
+            Assign('a', Int(5)),
+            Return(Call(Var('add'), [Var('a')]))
         ]),
-        Print(Call('hello', []))
+        Print(Call(Var('hello'), []))
     ])
     
 def test7():
@@ -169,13 +169,13 @@ def test7():
     print '------------'
 
     tree = Module([
-        Assign('a', 5),
+        Assign('a', Int(5)),
         Def('ciao', ['a'], [
             Print(Var('a'))
         ]),
-        Call('ciao', [Var('a')]),
+        Call(Var('ciao'), [Var('a')]),
     ])
-    
+     
 def test8():
     global tree
     print '-- TEST 8 --'
@@ -186,7 +186,7 @@ def test8():
     print '------------'
 
     tree = Module([
-        Print(Sum(5, 7))
+        Print(Add(Int(5), Int(7)))
     ])
 
 def test9():
@@ -199,7 +199,7 @@ def test9():
     print '------------'
 
     tree = Module([
-        Print(Sum("ciao ", "fabio"))
+        Print(Add(Str("ciao "), Str("fabio")))
     ])
     
 def test10():
@@ -207,7 +207,7 @@ def test10():
     print '-- TEST 10 --'
     print 'output would be...'
 
-    a = 5
+    a = 9
     if a > 7:
         print ">7"
     else:
@@ -217,12 +217,78 @@ def test10():
     print '------------'
 
     tree = Module([
-        Assign('a', 5),
-        If([Grt(Var('a'), 7)], [[Print(">7")], [Print("->"), Print("else!")]]),
+        Assign('a', Int(9)),
+        If([Gt(Var('a'), Str("7"))], [
+            [Print(Str(">7"))], 
+            [Print(Str("->")), Print(Str("else!"))]
+        ]),
     ])
     
+def test11():
+    global tree
+    print '-- TEST 11 --'
+    print 'output would be...'
+
+    a = 5
+    a = 7
+    print a
+
+    print '------------'
+
+    tree = Module([
+        Assign('pippo', Int(5)),
+        #Debug('memory'),
+        Assign('pippo', Int(7)),
+        #Debug('memory'),
+        Print(Var('pippo')),
+        #Sum(Var('pippo'), Var('pluto'))
+    ])
+    
+def test12():
+    global tree
+    print '-- TEST 12 --'
+    print 'output would be...'
+
+    def pippofun(a):
+        print a
+        b = 7
+        return b
+    print pippofun(5)
+
+    print '------------'
+
+    tree = Module([
+        Def('pippofun', ['a'], [
+            Print(Var('a')),
+            Assign('b', Int(7)),
+            Return(Var('b')),
+        ]),
+        Print(Call(Var('pippofun'), [Int(5)])),
+        #Debug('context'),
+        #Debug('memory'),
+    ])
+    
+def test13():
+    global tree
+    print '-- TEST 13 --'
+    print 'output would be...'
+
+    a = 5
+    b = a
+    print b
+
+    print '------------'
+
+    tree = Module([
+        Assign('a', Int(8)),
+        Assign('b', Var('a')),
+        Print(Var('b')),
+        Debug('context'),
+        Debug('memory'),
+    ])
+
 def main():
-    test10()
+    test1()
     compose()
 
 if __name__ == '__main__':

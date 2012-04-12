@@ -20,33 +20,20 @@ heap_stack = 3
 def print_register((r, n)):
     return [
         ('put_list', [(r, n), ('nil', None), ('x', 1)]),
-        ('move', [('literal', '~w~n')]),
+        ('move', [('literal', '~p~n')]),
         ('int_code_end', []),
         ('call_ext', [2, ('extfunc', 'io:format/2')]),
     ]
     
-    
 def evaluate(module_name, obj):
-    code = []
-    if type(obj) == int:
-        code += [('move', [('integer', obj), ('x', 0)])]
-    elif type(obj) == float:
-        code += [('move', [('float', obj), ('x', 0)])]
-    elif type(obj) == str:
-        code += [
-            ('move', [('literal', obj)]),
-            ('int_code_end', []),
-        ]
-    else:
-        obj.module_name = module_name
-        code += obj.generate()
-    return code
+    obj.module_name = module_name
+    return obj.generate()
 
 def to_stack():
     return [('put_list', [('x', 0), ('y', heap_stack), ('y', heap_stack)])]
 
 def from_stack(n):
-    """poppa dallo stack (y, 2) n parametri e li mette in una nuova lista su (x, 2)"""
+    """pop dallo stack (y, 2) n parametri e li mette in una nuova lista su (x, 2)"""
     code = [('move', [('nil', None), ('x', 2)])]
     for i in range(n):
         code += [        
@@ -54,31 +41,42 @@ def from_stack(n):
             ('put_list', [('x', 0), ('x', 2), ('x', 2)]),
         ]
     return code
-
-def assign_local(var):
-    return [
-        # estraggo la parte locale dal contesto
-        ('get_list', [('y', heap_context), ('x', 2), ('y', heap_context)]),
-
-        # inserisco la nuova variabile, tramite -> orddict:store('A', A, D0)
-        ('move', [('x', 0), ('x', 1)]),
-        ('move', [('atom', var), ('x', 0)]),
-        ('call_ext', [3, ('extfunc', 'orddict:store/3')]),
-
-        # rimetto la parte locale nel contesto
-        ('put_list', [('x', 0), ('y', heap_context), ('y', heap_context)]),
-    ]
     
-def merge_context(module_name):
-    return [
-        ('move', [('y', heap_context), ('x', 0)]),
-        ('call', [1, (module_name, 'dict_list_merge/1')]),
-    ]
+def call_method(module_name, method, params, memory_expected):
+    code = list()
+    code += evaluate(module_name, params[0])
+    code += to_stack()
+    code += evaluate(module_name, params[1])
+    code += to_stack()
 
-def get_from_context(var):
+    code += from_stack(2)
+    
+    # chiama il metodo method dell'oggetto
+    # call_method(Memory, Obj, Method, Params)
+    code += [
+        ('get_list', [('x', 2), ('x', 1), ('x', 3)]),
+        ('move', [('y', heap_memory), ('x', 0)]),
+        ('move', [('literal', method), ('x', 2)]),
+        ('call_ext', [4, ('extfunc', 'common:call_method/4')]),
+    ]
+    if memory_expected:
+        code += [
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+        ]
+    return code
+    
+def assign(var):
+    # assegna un oggetto alla variabile "var" aumentando il riferimento in memoria e,
+    # eventualmente, decrementando il riferimento all'elemento in memoria già associato 
+    # alla variabile
     return [
-        # orddict:fetch('A', Dict)
-        ('move', [('x', 0), ('x', 1)]),
-        ('move', [('atom', var), ('x', 0)]),
-        ('call_ext', [2, ('extfunc', 'orddict:fetch/2')]),
+        ('move', [('x', 0), ('x', 3)]),
+        ('move', [('y', heap_memory), ('x', 0)]),
+        ('move', [('y', heap_context), ('x', 1)]),
+        ('move', [('literal', var), ('x', 2)]),
+        ('call_ext', [4, ('extfunc', 'common:assign/4')]),
+        # valore di ritorno {Memory, Context}
+        ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+        ('get_tuple_element', [('x', 0), 1, ('y', heap_context)]),
     ]

@@ -26,7 +26,6 @@ class Composer:
         code = self.tree.generate()
         
         code += (self.utility_code())
-        code += (self.optional_code())
         
         code = self.assign_labels(code)
         
@@ -69,67 +68,6 @@ class Composer:
             ('move', [('x', 0), ('x', 1)]),
             ('move', [('atom', module_name), ('x', 0)]),
             ('call_ext_only', [2, ('extfunc', 'erlang:get_module_info/2')]),
-        ],
-        [
-            ('label', []),
-            ('func_info', [('atom', module_name), ('atom', 'dict_list_merge'), 1]),
-            ('label', []),
-            ('allocate_zero', [2, 1]),
-            ('move', [('x', 0), ('y', 1)]),
-            ('call_ext', [0, ('extfunc', 'orddict:new/0')]),
-            ('move', [('x', 0), ('y', 0)]),
-            ('make_fun2', [(module_name, '-dict_list_merge/1-fun-0-/2')]),
-            ('move', [('y', 1), ('x', 2)]),
-            ('move', [('y', 0), ('x', 1)]),
-            ('call_ext_last', [3, ('extfunc', 'lists:foldl/3'), 2]),
-        ],
-        [
-            ('label', []),
-            ('func_info', [('atom', module_name), ('atom', 'dict_merge'), 2]),
-            ('label', []),
-            ('allocate', [2, 2]),
-            ('move', [('x', 1), ('y', 0)]),
-            ('move', [('x', 0), ('y', 1)]),
-            ('make_fun2', [(module_name, '-dict_merge/2-fun-0-/3')]),
-            ('move', [('y', 0), ('x', 2)]),
-            ('move', [('y', 1), ('x', 1)]),
-            ('call_ext_last', [3, ('extfunc', 'orddict:merge/3'), 2]),
-        ],
-        [
-            ('label', []),
-            ('func_info', [('atom', module_name), ('atom', '-dict_merge/2-fun-0-'), 3]),
-            ('label', []),
-            ('move', [('x', 2), ('x', 0)]),
-            ('return', []),
-        ],
-        [
-            ('label', []),
-            ('func_info', [('atom', module_name), ('atom', '-dict_list_merge/1-fun-0-'), 2]),
-            ('label', []),
-            ('call_only', [2, (module_name, 'dict_merge/2')]),
-        ],
-        ]
-        return code
-        
-    def optional_code(self):
-        module_name = self.module_name
-        f = lambda x: '%s:%d' % ('sum', x)
-        code = [
-        [
-            ('label', []),
-            ('func_info', [('atom', module_name), ('atom', 'utility__sum__'), 2]),
-            ('label', []),
-            ('is_number', [('f', f(0)), ('x', 0)]),
-            ('is_number', [('f', f(0)), ('x', 1)]),
-            ('gc_bif2', [('f', 0), 2, ('extfunc', 'erlang:+/2'), ('x', 0), ('x', 1), ('x', 0)]),
-            ('return', []),
-            ('label', [f(0)]),
-            ('is_list', [('f', f(1)), ('x', 0)]),
-            ('is_list', [('f', f(1)), ('x', 1)]),
-            ('call_ext_only', [2, ('extfunc', 'string:concat/2')]),
-            ('label', [f(1)]),
-            ('move', [('atom', 'mathematical_operation_unhandled'), ('x', 0)]),
-            ('call_ext_only', [1, ('extfunc', 'erlang:error/1')]),
         ],
         ]
         return code

@@ -37,10 +37,12 @@ class Module:
             ('func_info', [('atom', module_name), ('atom', 'module'), 0]),
             ('label', []),
             ('allocate', [heap_n, 0]),
+            # prepara memory
+            ('call_ext', [0, ('extfunc', 'common:init_memory/0')]),
+            ('move', [('x', 0), ('y', heap_memory)]),
+            # preapara stack
             ('move', [('nil', None), ('y', heap_stack)]),
-        ]
-
-        code += [
+            # prepara context
             ('call_ext', [0, ('extfunc', 'orddict:new/0')]),
             ('put_list', [('x', 0), ('nil', None), ('y', heap_context)]),
         ]
@@ -87,38 +89,33 @@ class Def:
 
         code = [
             ('label', []),
-            ('func_info', [('atom', module_name), ('atom', self.name), 2]),
+            ('func_info', [('atom', module_name), ('atom', self.name), 3]),
             ('label', []),
             ('allocate', [heap_n, 0]),
             ('move', [('nil', None), ('y', heap_stack)]),
         ]
 
-        # memorizzo in ('y', 0) il contesto a cui aggiungo un nuovo dizionario 
-        # per le variabili locali, memorizzo anche la lista dei parametri
+        # memorizzo la memoria, il contesto (a cui aggiungo un nuovo dizionario 
+        # per le variabili locali), la lista dei parametri
         code += [
-            ('move', [('x', 0), ('y', heap_context)]),
-            ('move', [('x', 1), ('y', htb(0))]),
+            ('move', [('x', 0), ('y', heap_memory)]),
+            ('move', [('x', 1), ('y', heap_context)]),
+            ('move', [('x', 2), ('y', htb(0))]),
             ('call_ext', [0, ('extfunc', 'orddict:new/0')]),
             ('put_list', [('x', 0), ('y', heap_context), ('y', heap_context)]),
         ]
         
         # memorizzo i parametri attuali della funzione tra le variabili locali
-        code += [
-            # estraggo la parte locale dal contesto
-            ('get_list', [('y', heap_context), ('y', htb(1)), ('y', heap_context)]),
-            ('move', [('y', htb(1)), ('x', 2)]),
-        ]
         for p in params:
             code += [
-                # inserisco la nuova variabile, tramite -> orddict:store('A', A, D0)
-                ('get_list', [('y', htb(0)), ('x', 1), ('y', htb(0))]),
-                ('move', [('atom', p), ('x', 0)]),
-                ('call_ext', [3, ('extfunc', 'orddict:store/3')]),
-                ('move', [('x', 0), ('x', 2)]),
+                ('get_list', [('y', htb(0)), ('x', 3), ('y', htb(0))]),
+                ('move', [('y', heap_memory), ('x', 0)]),
+                ('move', [('y', heap_context), ('x', 1)]),
+                ('move', [('literal', p), ('x', 2)]),
+                ('call_ext', [4, ('extfunc', 'common:assign/4')]),
+                ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+                ('get_tuple_element', [('x', 0), 1, ('y', heap_context)]),
             ]
-        
-        # rimetto la parte locale nel contesto
-        code += [('put_list', [('x', 0), ('y', heap_context), ('y', heap_context)]),]
         
         for b in body:
             b.module_name = self.module_name
@@ -126,37 +123,58 @@ class Def:
                 b.output = output
                 b.ancestors = self.ancestors + [self.name]
             code += b.generate()
-                
+        
         code += [
-            ('move', [('atom', 'None'), ('x', 0)]),
+            #destroy_locals
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('call_ext', [2, ('extfunc', 'common:destroy_locals/2')]),
+            ('move', [('x', 0), ('y', heap_memory)]),
+        ]
+        code += [
+            ('put_list', [('atom', 'None'), ('nil', None), ('x', 0)]),
+            ('put_list', [('y', heap_memory), ('x', 0), ('x', 0)]),
             ('deallocate', [heap_n]),
             ('return', []),
         ]
         output.append(code)
         
     def inline(self):
-        # salva il riferimento alla nuova funzione: [name=fun1, deep=1].
-        # deep è la profondità che darà luogo la nuova funzione, nonchè il numero
-        # di insiemi di variabili da trasportare, a partire da quello di livello
-        # modulo in su!
+        # creo un oggetto funzione passandogli il puntatore al codice, ovvero il nome
+        # della funzione vera, e la profondità
+        # "function___new__(Memory, FuncName, Deep)"
+        # dopodichè assegno l'oggetto alla variabile self.name
         code = [
-            ('move', [('integer', len(self.ancestors)), ('x', 0)]),
-            ('put_list', [('x', 0), ('nil', None), ('x', 0)]),
-            ('put_list', [('atom', self.name), ('x', 0), ('x', 0)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('atom', self.name), ('x', 1)]),
+            ('move', [('integer', len(self.ancestors)), ('x', 2)]),
+            ('call_ext', [3, ('extfunc', 'base:function___new__/3')]),
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
         ]
-        code += assign_local(self.assign_to)
+        
+        code += [
+            ('move', [('x', 0), ('x', 3)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('move', [('literal', self.assign_to), ('x', 2)]),
+            ('call_ext', [4, ('extfunc', 'common:assign/4')]),
+            # valore di ritorno {Memory, Context}
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('y', heap_context)]),
+        ]
         return code
 
 class For:
     name_num = 1
 
-    def __init__(self, item, items_list, body):
+    def __init__(self, item, iteration_list, body):
         self.module_name = None
         self.output = None
         self.name = "for__%d" % For.name_num
         For.name_num += 1
         self.item = item
-        self.items_list = items_list
+        self.iteration_list = iteration_list
         self.body = body
     
     def generate(self):
@@ -172,18 +190,55 @@ class For:
         
         code = [
             ('label', ['%s:%d' % (self.name, 0)]),
-            ('func_info', [('atom', module_name), ('atom', self.name), 2]),
+            ('func_info', [('atom', module_name), ('atom', self.name), 3]),
             ('label', []),
-            ('is_nonempty_list', [('f', '%s:%d' % (self.name, 1)), ('x', 1)]),
+            
             ('allocate', [heap_n, 0]),
             ('move', [('nil', None), ('y', heap_stack)]),
         ]
         
         code += [
-            ('move', [('x', 0), ('y', heap_context)]),
-            ('get_list', [('x', 1), ('x', 0), ('y', heap_aux)]),
+            ('move', [('x', 0), ('y', heap_memory)]),
+            ('move', [('x', 1), ('y', heap_context)]),
+            
+            #('get_list', [('x', 2), ('x', 0), ('y', heap_aux)]),
         ]
-        code += assign_local(self.item)
+        # recupera la lista dal suo puntatore in ('x', 2)
+        code += [
+            # chiama il metodo __repr__ dell'oggetto
+            ('move', [('x', 2), ('x', 1)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('literal', '__repr__'), ('x', 2)]),
+            ('move', [('nil', None), ('x', 3)]),
+            ('call_ext', [4, ('extfunc', 'common:call_method/4')]),
+            # ('x', 0) -> lista su cui fare il for
+            ##
+            ('is_nonempty_list', [('f', '%s:%d' % (self.name, 1)), ('x', 0)]),
+            # crea un nuovo intero per il primo elemento della lista e una nuova
+            # lista per gli elementi restanti della lista
+            ('get_list', [('x', 0), ('x', 1), ('y', heap_aux)]),
+        ]
+        #code += print_register(('x', 0))
+        
+        code += [
+            # crea un nuovo intero col valore ('x', 0)
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('call_ext', [2, ('extfunc', 'base:int___new__/2')]),
+            # valore di ritorno {Memory, N}
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+        ]
+        code += assign(item)
+        
+        code += [
+            # crea una nuova lista col valore ('y', heap)
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_aux), ('x', 1)]),
+            ('call_ext', [2, ('extfunc', 'base:list___new__/2')]),
+            # valore di ritorno {Memory, N}
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('y', heap_aux)]),
+        ]
 
         for b in body:
             b.module_name = self.module_name
@@ -191,15 +246,23 @@ class For:
                 b.output = output
                 b.ancestors = self.ancestors + [self.name]
             code += b.generate()
-                
         
         code += [
-            ('move', [('y', heap_context), ('x', 0)]),
-            ('move', [('y', heap_aux), ('x', 1)]),
-            ('call_last', [3, (module_name, self.name + '/2'), heap_n]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('move', [('y', heap_aux), ('x', 2)]),
+            ('call_last', [3, (module_name, self.name + '/3'), heap_n]),
             ('label', ['%s:%d' % (self.name, 1)]),
-            ('is_nil', [('f', '%s:%d' % (self.name, 0)), ('x', 1)]),
-            #('move', [('y', 0), ('x', 0)]), non è necessario!
+            ##exdeall
+            ('is_nil', [('f', '%s:%d' % (self.name, 0)), ('x', 0)]),
+            # ritorna una tupla: {Memory, Context}
+        ]
+        code += [
+            ('put_tuple', [2, ('x', 2)]),
+            ('put', [('y', heap_memory)]),
+            ('put', [('y', heap_context)]),
+            ('move', [('x', 2), ('x', 0)]),
+            ('deallocate', [heap_n]),
             ('return', []),
         ]
 
@@ -208,12 +271,16 @@ class For:
     def inline(self):
         module_name = self.module_name
         # passa al for (context, variabile su cui iterare il for)
-        code = self.items_list.generate()
+        code = self.iteration_list.generate()
+        #code += print_register(('x', 0))
         code += [
-            ('move', [('x', 0), ('x', 1)]),
-            ('move', [('y', heap_context), ('x', 0)]),
-            ('call', [2, (module_name, '%s/%d' % (self.name, 2))]),
-            ('move', [('x', 0), ('y', heap_context)]),
+            ('move', [('x', 0), ('x', 2)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('call', [3, (module_name, '%s/%d' % (self.name, 3))]),
+            #('move', [('x', 0), ('y', heap_context)]),
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('y', heap_context)]),
         ]
         return code
 
@@ -242,14 +309,16 @@ class If:
         f = lambda x: '%s:%d' % (self.name, x)
         
         code = [
-            ('label', []), #f(0)
-            ('func_info', [('atom', module_name), ('atom', self.name), 2]),
+            ('label', []),
+            ('func_info', [('atom', module_name), ('atom', self.name), 3]),
             ('label', []),
             ('allocate', [heap_n, 0]),
+            # memoria
+            ('move', [('x', 0), ('y', heap_memory)]),
             # contesto
-            ('move', [('x', 0), ('y', heap_context)]),
+            ('move', [('x', 1), ('y', heap_context)]),
             # lista condizioni
-            ('move', [('x', 1), ('y', heap_aux)]),
+            ('move', [('x', 2), ('y', heap_aux)]),
             # stack
             ('move', [('nil', None), ('y', heap_stack)]),
         ]
@@ -263,7 +332,8 @@ class If:
                 b.module_name = self.module_name
                 code += b.generate()
             code += [
-                ('move', [('y', heap_context), ('x', 0)]),
+                ('put_list', [('y', heap_context), ('nil', None), ('x', 0)]),
+                ('put_list', [('y', heap_memory), ('x', 0), ('x', 0)]),
                 ('deallocate', [heap_n]),
                 ('return', []),
                 ('label', [f(i)]),
@@ -275,7 +345,8 @@ class If:
                 code += b.generate()
         
         code += [
-            ('move', [('y', heap_context), ('x', 0)]),
+            ('put_list', [('y', heap_context), ('nil', None), ('x', 0)]),
+            ('put_list', [('y', heap_memory), ('x', 0), ('x', 0)]),
             ('deallocate', [heap_n]),
             ('return', []),
         ]
@@ -288,39 +359,111 @@ class If:
         # passa all'if (context, lista dei risultati delle condizioni)
         code = list()
         for c in conds:
-            code += evaluate(module_name, c)
+            c.module_name = self.module_name
+            code += c.generate()
             code += to_stack()
         code += from_stack(len(conds))
         code += [
-            ('move', [('x', 2), ('x', 1)]),
-            ('move', [('y', heap_context), ('x', 0)]),
-            ('call', [2, (module_name, '%s/%d' % (self.name, 2))]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('call', [3, (module_name, '%s/%d' % (self.name, 3))]),
             ('move', [('x', 0), ('y', heap_context)]),
+            ('get_list', [('x', 0), ('y', heap_memory), ('x', 0)]),
+            ('get_list', [('x', 0), ('y', heap_context), ('x', 0)]),
         ]
         return code
         
         
 ## just inline code methods ##
-
-class Grt:
-    def __init__(self, obj1, obj2):
+class Assign:
+    def __init__(self, var, obj):
         self.module_name = None
-        self.obj1 = obj1
-        self.obj2 = obj2
-    
+        self.var = var
+        self.obj = obj
+
     def generate(self):
         code = list()
-        code += evaluate(self.module_name, self.obj1)
-        code += to_stack()
-        code += evaluate(self.module_name, self.obj2)
-        code += to_stack()
+        code += evaluate(self.module_name, self.obj)
+        code += assign(self.var)
+        #code += print_register(('x', 0))
         
-        code += from_stack(2)
+        return code
         
+class Int:
+    def __init__(self, value):
+        self.module_name = None
+        self.value = value
+        
+    def generate(self):
+        code = list()
+        # chiama int___new__(Memory, N)
         code += [
-            ('get_list', [('x', 2), ('x', 0), ('x', 2)]),
-            ('get_list', [('x', 2), ('x', 1), ('x', 2)]),
-            ('bif2', [('f', 0), ('extfunc', 'erlang:>/2'), ('x', 0), ('x', 1), ('x', 0)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('integer', self.value), ('x', 1)]),
+            ('call_ext', [2, ('extfunc', 'base:int___new__/2')]),
+            # valore di ritorno {Memory, N}
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+        ]
+        #code += print_register(('x', 0))
+        return code
+        
+class Str:
+    def __init__(self, value):
+        self.module_name = None
+        self.value = value
+        
+    def generate(self):
+        code = list()
+        # chiama str___new__(Memory, N)
+        code += [
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('literal', self.value), ('x', 1)]),
+            ('call_ext', [2, ('extfunc', 'base:str___new__/2')]),
+            # valore di ritorno {Memory, N}
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+        ]
+        return code
+
+class Var:
+    def __init__(self, name):
+        self.module_name = None
+        self.name = name
+
+    def generate(self):
+        code = list()
+        code += [
+            ('move', [('y', heap_context), ('x', 0)]),
+            ('move', [('literal', self.name), ('x', 1)]),
+            ('call_ext', [2, ('extfunc', 'common:get_from_context/2')]),
+        ]
+        #code += print_register(('x', 0))
+        return code
+        
+class Print:
+    def __init__(self, obj):
+        self.module_name = None
+        self.obj = obj
+
+    def generate(self):
+        code = list()
+        obj = self.obj
+        obj.module_name = self.module_name
+        code += obj.generate()
+        code += [
+            # chiama il metodo __repr__ dell'oggetto
+            ('move', [('x', 0), ('x', 1)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('literal', '__repr__'), ('x', 2)]),
+            ('move', [('nil', None), ('x', 3)]),
+            ('call_ext', [4, ('extfunc', 'common:call_method/4')]),
+            
+            # stampa
+            ('put_list', [('x', 0), ('nil', None), ('x', 1)]),
+            ('move', [('literal', '~p~n')]),
+            ('int_code_end', []),
+            ('call_ext', [2, ('extfunc', 'io:format/2')]),
         ]
         return code
                 
@@ -331,87 +474,83 @@ class Call:
         self.params = params
 
     def generate(self):
-        module_name = self.module_name
         target = self.target
         params = self.params
-        htb = lambda x: heap_temp_base + x
+        module_name = self.module_name
         
         code = list()
         
+        code += evaluate(module_name, target)
+        code += to_stack()
         for p in params:
-            code += evaluate(self.module_name, p)
+            code += evaluate(module_name, p)
             code += to_stack()
         
-        code += from_stack(len(params))
-        # x0->params_list
-        code += [('move', [('x', 2), ('y', htb(0))])]
-        ###code += print_register(('y', 3))
-        
-        code += merge_context(module_name)
-        code += get_from_context(target)
-        
-        # ho ottenuto il riferimento alla funzione ovvero una lista [name, deep].
-        code += [
-            ('get_list', [('x', 0), ('y', htb(1)), ('x', 0)]),
-            ('get_list', [('x', 0), ('y', htb(2)), ('x', 0)]),
-        ]
-        # htb0->params_list, htb1->name, htb2->deep
-        
-        # prepara il sottinsieme (anche improprio) del contesto da passare alla funzione
-        code += [
-            ('move', [('y', heap_context), ('x', 0)]),
-            ('call_ext', [1, ('extfunc', 'lists:reverse/1')]),
-            ('move', [('y', htb(2)), ('x', 1)]),
-            ('call_ext', [2, ('extfunc', 'lists:sublist/2')]),
-            ('call_ext', [1, ('extfunc', 'lists:reverse/1')]),
-            ('move', [('x', 0), ('y', htb(2))]),
-        ]
-        # htb0->params_list, htb1->name, htb2->new_context
-        
-        # costruisco la lista finale
-        code += [
-            ('put_list', [('y', htb(0)), ('nil', None), ('y', htb(0))]),
-            ('put_list', [('y', htb(2)), ('y', htb(0)), ('x', 2)]),
-        ]
+        code += from_stack(len(params) + 1)
         
         code += [
-            ('move', [('atom', module_name), ('x', 0)]),
-            ('move', [('y', htb(1)), ('x', 1)]),
-            ('call_ext', [3, ('extfunc', 'erlang:apply/3')]),
+            ('move', [('x', 2), ('x', 3)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('move', [('atom', module_name), ('x', 2)]),
+            ('call_ext', [4, ('extfunc', 'base:function___call__/4')]),
+            ('get_list', [('x', 0), ('y', heap_memory), ('x', 0)]),
+            ('get_list', [('x', 0), ('x', 0), ('x', 1)]),
         ]
         return code
 
+class Gt:
+    def __init__(self, obj1, obj2):
+        self.module_name = None
+        self.obj1 = obj1
+        self.obj2 = obj2
+
+    def generate(self):
+        return call_method(self.module_name, '__gt__', (self.obj1, self.obj2),
+            memory_expected=False)
+        
+class Add:
+    def __init__(self, obj1, obj2):
+        self.module_name = None
+        self.obj1 = obj1
+        self.obj2 = obj2
+
+    def generate(self):
+        return call_method(self.module_name, '__add__', (self.obj1, self.obj2),
+            memory_expected=True)
+        
 class Return:
     def __init__(self, obj=None):
         self.module_name = None
         self.obj = obj
         
     def generate(self):
+        htb = lambda x: heap_temp_base + x
         obj = self.obj
         code = []
         if obj:
-            code += evaluate(self.module_name, obj)
+            obj.module_name = self.module_name
+            code += obj.generate()
+            #code += evaluate(self.module_name, obj)
+            code += [('move', [('x', 0), ('y', htb(0))])]
         else:
-            code += [('move', [('atom', 'None'), ('x', 0)])]
+            code += [('move', [('atom', 'None'), ('y', htb(0))])]
+        #code += print_register(('y', htb(0)))
+            
         code += [
+            #destroy_locals
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('call_ext', [2, ('extfunc', 'common:destroy_locals/2')]),
+            ('move', [('x', 0), ('y', heap_memory)]),
+        ]
+        code += [
+            ('put_list', [('y', htb(0)), ('nil', None), ('x', 0)]),
+            ('put_list', [('y', heap_memory), ('x', 0), ('x', 0)]),
             ('deallocate', [heap_n]),
             ('return', []),
         ]
         return code
-    
-class Assign:
-    def __init__(self, var, obj):
-        self.module_name = None
-        self.var = var
-        self.obj = obj
-
-    def generate(self):
-        code = evaluate(self.module_name, self.obj)
-        code += assign_local(self.var)
-        
-        return code
-
-
 
 class Range:
     def __init__(self, obj1, obj2):
@@ -429,75 +568,44 @@ class Range:
         
         code += from_stack(2)
         
-        # sottrae 1 all'estremo destro
-        code += [
-            ('get_list', [('x', 2), ('y', htb(0)), ('x', 2)]),
-            ('get_list', [('x', 2), ('y', htb(1)), ('x', 2)]),
-            ('gc_bif2', [('f', 0), 1, ('extfunc', 'erlang:-/2'), 
-                ('y', htb(1)), ('integer', 1), ('y', htb(1))]),
-            ('move', [('nil', None), ('x', 2)]),
-            ('put_list', [('y', htb(1)), ('x', 2), ('x', 2)]),
-            ('put_list', [('y', htb(0)), ('x', 2), ('x', 2)]),
-        ]
+        # code += [
+        #     ('get_list', [('x', 2), ('y', htb(0)), ('x', 2)]),
+        #     ('get_list', [('x', 2), ('y', htb(1)), ('x', 2)]),
+        # ]
         
         code += [
-            ('move', [('atom', 'lists'), ('x', 0)]),
-            ('move', [('atom', 'seq'), ('x', 1)]),
-            ('call_ext', [3, ('extfunc', 'erlang:apply/3')]),
+            ('get_list', [('x', 2), ('x', 1), ('x', 2)]),
+            ('get_list', [('x', 2), ('x', 2), ('x', 0)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('call_ext', [3, ('extfunc', 'base:range/3')]),
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
         ]
-        return code
         
-class Sum:
-    def __init__(self, obj1, obj2):
-        self.module_name = None
-        self.obj1 = obj1
-        self.obj2 = obj2
-        
-    def generate(self):
-        module_name = self.module_name
-        code = list()
-        #code += print_register(('y', 2)) ###
-        code += evaluate(self.module_name, self.obj1)
-        code += to_stack()
-        code += evaluate(self.module_name, self.obj2)
-        code += to_stack()
-        
-        code += from_stack(2)
-        
-        code += [
-            ('move', [('atom', module_name), ('x', 0)]),
-            ('move', [('atom', 'utility__sum__'), ('x', 1)]),
-            ('call_ext', [3, ('extfunc', 'erlang:apply/3')]),
-        ]
-        return code
+        # # sostituisce ai puntatori i veri valori
+        # for i in range(2):
+        #     code += [
+        #         # chiama il metodo __repr__ dell'oggetto
+        #         ('move', [('y', htb(i)), ('x', 1)]),
+        #         ('move', [('y', heap_memory), ('x', 0)]),
+        #         ('move', [('literal', '__repr__'), ('x', 2)]),
+        #         ('move', [('nil', None), ('x', 3)]),
+        #         ('call_ext', [4, ('extfunc', 'common:call_method/4')]),
+        #         ('move', [('x', 0), ('y', htb(i))]),
+        #     ]
+        # 
+        # # sottrae 1 all'estremo destro
+        # code += [
+        #     ('gc_bif2', [('f', 0), 1, ('extfunc', 'erlang:-/2'), 
+        #         ('y', htb(1)), ('integer', 1), ('y', htb(1))]),
+        # ]
+        # 
+        # code += [
+        #     ('move', [('y', htb(0)), ('x', 0)]),
+        #     ('move', [('y', htb(1)), ('x', 1)]),
+        #     ('call_ext', [3, ('extfunc', 'lists:seq/2')]),        
+        # ]
 
-class Print:
-    def __init__(self, obj=None):
-        self.module_name = None
-        self.obj = obj
-
-    def generate(self):
-        code = list()
-        code += evaluate(self.module_name, self.obj)
-
-        code += [
-            ('put_list', [('x', 0), ('nil', None), ('x', 1)]),
-            ('move', [('literal', '~p~n')]),
-            ('int_code_end', []),
-            ('call_ext', [2, ('extfunc', 'io:format/2')]),
-        ]
-        return code
-        
-class Var:
-    def __init__(self, name):
-        self.module_name = None
-        self.name = name
-        
-    def generate(self):
-        module_name = self.module_name
-        name = self.name
-        code = merge_context(self.module_name)
-        code += get_from_context(name)
         return code
 
 class Debug:
@@ -508,7 +616,11 @@ class Debug:
     def generate(self):
         what = self.what
         code = list()
-        if what == "context":
+        if what == "memory":
+            code += [
+                ('put_list', [('y', heap_memory), ('nil', None), ('x', 1)]),
+            ]
+        elif what == "context":
             code += [
                 ('put_list', [('y', heap_context), ('nil', None), ('x', 1)]),
             ]
@@ -519,7 +631,7 @@ class Debug:
         else:
             raise Exception('debug what??')
         code += [
-            ('move', [('literal', '~w~n')]),
+            ('move', [('literal', '~140p~n')]),
             ('int_code_end', []),
             ('call_ext', [2, ('extfunc', 'io:format/2')]),
         ]
