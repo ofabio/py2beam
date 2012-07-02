@@ -49,9 +49,10 @@ class Module:
 
         for b in body:
             b.module_name = module_name
-            if b.__class__ in (Def, For, If):
+            if b.__class__ in (Def, For, If, Class):
                 b.output = output
                 b.ancestors = ['module']
+            b.is_in_class = False
             code += b.generate()
 
         code += [
@@ -75,6 +76,7 @@ class Def:
         self.name = 'fun__%d' % Def.n_fun
         Def.n_fun += 1
         self.ancestors = []
+        self.is_in_class = False
 
     def generate(self):
         self.to_base()
@@ -119,9 +121,10 @@ class Def:
         
         for b in body:
             b.module_name = self.module_name
-            if b.__class__ in (Def, For, If):
+            if b.__class__ in (Def, For, If, Class):
                 b.output = output
                 b.ancestors = self.ancestors + [self.name]
+            b.is_in_class = False
             code += b.generate()
         
         code += [
@@ -153,15 +156,19 @@ class Def:
             ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
         ]
         
+        if self.is_in_class:
+            context = heap_aux
+        else:
+            context = heap_context
         code += [
             ('move', [('x', 0), ('x', 3)]),
             ('move', [('y', heap_memory), ('x', 0)]),
-            ('move', [('y', heap_context), ('x', 1)]),
+            ('move', [('y', context), ('x', 1)]),
             ('move', [('literal', self.assign_to), ('x', 2)]),
             ('call_ext', [4, ('extfunc', 'common:assign/4')]),
             # valore di ritorno {Memory, Context}
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-            ('get_tuple_element', [('x', 0), 1, ('y', heap_context)]),
+            ('get_tuple_element', [('x', 0), 1, ('y', context)]),
         ]
         return code
 
@@ -176,6 +183,7 @@ class For:
         self.item = item
         self.iteration_list = iteration_list
         self.body = body
+        self.is_in_class = False
     
     def generate(self):
         self.to_base()
@@ -242,9 +250,10 @@ class For:
 
         for b in body:
             b.module_name = self.module_name
-            if b.__class__ in (Def, For, If):
+            if b.__class__ in (Def, For, If, Class):
                 b.output = output
                 b.ancestors = self.ancestors + [self.name]
+            b.is_in_class = self.is_in_class
             code += b.generate()
         
         code += [
@@ -271,6 +280,7 @@ class For:
     def inline(self):
         module_name = self.module_name
         # passa al for (context, variabile su cui iterare il for)
+        self.iteration_list.is_in_class = self.is_in_class
         code = self.iteration_list.generate()
         #code += print_register(('x', 0))
         code += [
@@ -295,6 +305,7 @@ class If:
         If.name_num += 1
         self.conds = conds
         self.bodies = bodies
+        self.is_in_class = False
     
     def generate(self):
         self.to_base()
@@ -330,6 +341,7 @@ class If:
             ]
             for b in bodies[i]:
                 b.module_name = self.module_name
+                b.is_in_class = self.is_in_class
                 code += b.generate()
             code += [
                 ('put_list', [('y', heap_context), ('nil', None), ('x', 0)]),
@@ -342,6 +354,7 @@ class If:
         if len(bodies) == len(conds) + 1:
             for b in bodies[-1]:
                 b.module_name = self.module_name
+                b.is_in_class = self.is_in_class
                 code += b.generate()
         
         code += [
@@ -360,6 +373,7 @@ class If:
         code = list()
         for c in conds:
             c.module_name = self.module_name
+            c.is_in_class = self.is_in_class
             code += c.generate()
             code += to_stack()
         code += from_stack(len(conds))
@@ -372,19 +386,138 @@ class If:
             ('get_list', [('x', 0), ('y', heap_context), ('x', 0)]),
         ]
         return code
+
+class Class:
+    name_num = 0
+    
+    def __init__(self, assign_to, body, super_=None):
+        self.module_name = None
+        self.output = None
+        self.name = "class__%d" % Class.name_num
+        Class.name_num += 1
+        self.body = body
+        self.assign_to = assign_to
+        self.is_in_class = False
+
+    def generate(self):
+        self.to_base()
+        return self.inline()
+
+    def to_base(self):
+        module_name = self.module_name
+        output = self.output
+        body = self.body
+        htb = lambda x: heap_temp_base + x
+
+        code = [
+            ('label', []),
+            ('func_info', [('atom', module_name), ('atom', self.name), 2]),
+            ('label', []),
+            ('allocate', [heap_n, 0]),
+            ('move', [('nil', None), ('y', heap_stack)]),
+        ]
+
+        # memorizzo la memoria, il contesto (a cui aggiungo un nuovo dizionario 
+        # per le variabili locali), la lista dei parametri
+        code += [
+            ('move', [('x', 0), ('y', heap_memory)]),
+            ('move', [('x', 1), ('y', heap_context)]),
+            ('call_ext', [0, ('extfunc', 'orddict:new/0')]),
+            ('move', [('x', 0), ('y', heap_aux)]),
+        ]
         
+        for b in body:
+            b.module_name = self.module_name
+            if b.__class__ in (Def, For, If, Class):
+                b.output = output
+                b.ancestors = self.ancestors
+            b.is_in_class = True
+            code += b.generate()
         
+        # code += [
+        #     #destroy_locals
+        #     ('move', [('y', heap_memory), ('x', 0)]),
+        #     ('move', [('y', heap_aux), ('x', 1)]),
+        #     ('call_ext', [2, ('extfunc', 'common:destroy_locals/2')]),
+        #     ('move', [('x', 0), ('y', heap_memory)]),
+        # ]
+        code += [
+            ('put_tuple', [2, ('x', 2)]),
+            ('put', [('y', heap_memory)]),
+            ('put', [('y', heap_aux)]),
+            ('move', [('x', 2), ('x', 0)]),
+            ('deallocate', [heap_n]),
+            ('return', []),
+        ]
+        output.append(code)
+
+    def inline(self):
+        module_name = self.module_name
+        code = [
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('call', [2, (module_name, '%s/%d' % (self.name, 2))]),
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 2)]),
+        ]
+        
+        # creo un oggetto classe passandogli il puntatore al codice, ovvero il nome
+        # della classe vera, e il suo contesto
+        # "class___new__(Memory, ClassName, Context)"
+        # dopodichè assegno l'oggetto alla variabile self.assign_to
+        code += [
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('atom', self.name), ('x', 1)]),
+            ('call_ext', [3, ('extfunc', 'base:class___new__/3')]),
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+        ]
+        
+        code += [
+            ('move', [('x', 0), ('x', 3)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('move', [('literal', self.assign_to), ('x', 2)]),
+            ('call_ext', [4, ('extfunc', 'common:assign/4')]),
+            # valore di ritorno {Memory, Context}
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('y', heap_context)]),
+        ]
+        return code
+
 ## just inline code methods ##
+#(M, C, ModuleName, Obj, Attribute)
+class Dot:
+    def __init__(self, obj, attribute):
+        self.module_name = None
+        self.obj = obj
+        self.attribute = attribute
+        
+    def generate(self):
+        code = list()
+        code += evaluate(self.module_name, self.obj)
+        code += [
+            ('move', [('x', 0), ('x', 3)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('move', [('atom', self.module_name), ('x', 2)]),
+            ('move', [('literal', self.attribute), ('x', 4)]),
+            ('call_ext', [5, ('extfunc', 'common:dot/5')]),
+        ]
+        #code += print_register(('x', 0))
+        return code
+        
 class Assign:
     def __init__(self, var, obj):
         self.module_name = None
         self.var = var
         self.obj = obj
+        self.is_in_class = False
 
     def generate(self):
         code = list()
         code += evaluate(self.module_name, self.obj)
-        code += assign(self.var)
+        code += assign(self.var, self.is_in_class)
         #code += print_register(('x', 0))
         
         return code
@@ -393,6 +526,7 @@ class Int:
     def __init__(self, value):
         self.module_name = None
         self.value = value
+        self.is_in_class = False
         
     def generate(self):
         code = list()
@@ -412,6 +546,7 @@ class Str:
     def __init__(self, value):
         self.module_name = None
         self.value = value
+        self.is_in_class = False
         
     def generate(self):
         code = list()
@@ -430,14 +565,24 @@ class Var:
     def __init__(self, name):
         self.module_name = None
         self.name = name
+        self.is_in_class = False
+        
 
     def generate(self):
         code = list()
-        code += [
-            ('move', [('y', heap_context), ('x', 0)]),
-            ('move', [('literal', self.name), ('x', 1)]),
-            ('call_ext', [2, ('extfunc', 'common:get_from_context/2')]),
-        ]
+        if self.is_in_class:
+            code += [
+                ('move', [('y', heap_aux), ('x', 0)]),
+                ('move', [('y', heap_context), ('x', 1)]),
+                ('move', [('literal', self.name), ('x', 2)]),
+                ('call_ext', [3, ('extfunc', 'common:get_from_context/3')]),
+            ]
+        else:
+            code += [
+                ('move', [('y', heap_context), ('x', 0)]),
+                ('move', [('literal', self.name), ('x', 1)]),
+                ('call_ext', [2, ('extfunc', 'common:get_from_context/2')]),
+            ]
         #code += print_register(('x', 0))
         return code
         
@@ -445,11 +590,13 @@ class Print:
     def __init__(self, obj):
         self.module_name = None
         self.obj = obj
+        self.is_in_class = False
 
     def generate(self):
         code = list()
         obj = self.obj
         obj.module_name = self.module_name
+        obj.is_in_class = self.is_in_class
         code += obj.generate()
         code += [
             # chiama il metodo __repr__ dell'oggetto
@@ -472,6 +619,7 @@ class Call:
         self.module_name = None
         self.target = target
         self.params = params
+        self.is_in_class = False
 
     def generate(self):
         target = self.target
@@ -504,6 +652,7 @@ class Gt:
         self.module_name = None
         self.obj1 = obj1
         self.obj2 = obj2
+        self.is_in_class = False
 
     def generate(self):
         return call_method(self.module_name, '__gt__', (self.obj1, self.obj2),
@@ -514,6 +663,7 @@ class Add:
         self.module_name = None
         self.obj1 = obj1
         self.obj2 = obj2
+        self.is_in_class = False
 
     def generate(self):
         return call_method(self.module_name, '__add__', (self.obj1, self.obj2),
@@ -523,6 +673,7 @@ class Return:
     def __init__(self, obj=None):
         self.module_name = None
         self.obj = obj
+        self.is_in_class = False
         
     def generate(self):
         htb = lambda x: heap_temp_base + x
@@ -530,6 +681,7 @@ class Return:
         code = []
         if obj:
             obj.module_name = self.module_name
+            obj.is_in_class = self.is_in_class
             code += obj.generate()
             #code += evaluate(self.module_name, obj)
             code += [('move', [('x', 0), ('y', htb(0))])]
@@ -557,6 +709,7 @@ class Range:
         self.module_name = None
         self.obj1 = obj1
         self.obj2 = obj2
+        self.is_in_class = False
 
     def generate(self):
         htb = lambda x: heap_temp_base + x
@@ -612,6 +765,7 @@ class Debug:
     def __init__(self, what):
         self.module_name = None
         self.what = what
+        self.is_in_class = False
 
     def generate(self):
         what = self.what
@@ -627,6 +781,10 @@ class Debug:
         elif what == 'stack':
             code += [
                 ('put_list', [('y', heap_stack), ('nil', None), ('x', 1)]),
+            ]
+        elif what == 'aux':
+            code += [
+                ('put_list', [('y', heap_aux), ('nil', None), ('x', 1)]),
             ]
         else:
             raise Exception('debug what??')

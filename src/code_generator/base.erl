@@ -1,16 +1,18 @@
 -module(base).
--export([int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, function___new__/3, function___call__/4, str___new__/2, str___add__/3, str___repr__/2, list___new__/2, list___repr__/2, range/3]).
+-export([int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, function___new__/3, str___new__/2, str___add__/3, str___repr__/2, list___new__/2, list___repr__/2, range/3, class___new__/3]).
+
+% function___call__/4, 
 
 int___new__(Memory, N) ->
     A = orddict:new(),
-    B = orddict:store("__class__", "int", A),
+    B = orddict:store("__type__", "int", A),
     State = orddict:store("__value__", N, B),
     common:to_memory(Memory, State).
 
 int___add__(Memory, Self, Other) ->
     SelfState = common:read_memory(Memory, Self),
     OtherState = common:read_memory(Memory, Other),
-	TypeOther = orddict:fetch("__class__", OtherState),
+	TypeOther = orddict:fetch("__type__", OtherState),
 	case TypeOther of
 		"int" ->
 	    	A = orddict:fetch("__value__", SelfState),
@@ -24,7 +26,7 @@ int___add__(Memory, Self, Other) ->
 int___gt__(Memory, Self, Other) ->
 	SelfState = common:read_memory(Memory, Self),
 	OtherState = common:read_memory(Memory, Other),
-	TypeOther = orddict:fetch("__class__", OtherState),
+	TypeOther = orddict:fetch("__type__", OtherState),
 	case TypeOther of
 		"int" ->
 			A = orddict:fetch("__value__", SelfState),
@@ -43,14 +45,14 @@ int___repr__(Memory, Self) ->
 
 str___new__(Memory, N) ->
     A = orddict:new(),
-    B = orddict:store("__class__", "str", A),
+    B = orddict:store("__type__", "str", A),
     State = orddict:store("__value__", N, B),
     common:to_memory(Memory, State).
 
 str___add__(Memory, Self, Other) ->
 	SelfState = common:read_memory(Memory, Self),
 	OtherState = common:read_memory(Memory, Other),
-	TypeOther = orddict:fetch("__class__", OtherState),
+	TypeOther = orddict:fetch("__type__", OtherState),
 	case TypeOther of
 		"str" ->
 			A = orddict:fetch("__value__", SelfState),
@@ -67,7 +69,7 @@ str___repr__(Memory, Self) ->
 		
 function___new__(Memory, FuncName, Deep) ->
 	A = orddict:new(),
-    B = orddict:store("__class__", "function", A),
+    B = orddict:store("__type__", "function", A),
     C = orddict:store("func_name", FuncName, B),
 	State = orddict:store("deep", Deep, C),
     common:to_memory(Memory, State).
@@ -85,10 +87,18 @@ function___call__(Memory, Context, ModuleName, Args) ->
 	%io:format("~p~n~p~n~p~n~n", [Memory, C3, Parameters]),
 	erlang:apply(ModuleName, FuncName, Parameters).
 
+% ----- class -----
+class___new__(Memory, ClassName, ClassContext) ->
+	A = orddict:new(),
+    B = orddict:store("__type__", "class", A),
+    C = orddict:store("class_name", ClassName, B),
+    State = orddict:store("__context__", ClassContext, C),
+    common:to_memory(Memory, State).
+
 % ----- list -----
 list___new__(Memory, L) ->
     A = orddict:new(),
-    B = orddict:store("__class__", "list", A),
+    B = orddict:store("__type__", "list", A),
     State = orddict:store("__value__", L, B),
     common:to_memory(Memory, State).
 

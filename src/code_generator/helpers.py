@@ -66,17 +66,21 @@ def call_method(module_name, method, params, memory_expected):
         ]
     return code
     
-def assign(var):
+def assign(var, is_in_class=False):
     # assegna un oggetto alla variabile "var" aumentando il riferimento in memoria e,
     # eventualmente, decrementando il riferimento all'elemento in memoria già associato 
     # alla variabile
+    if is_in_class:
+        context = heap_aux
+    else:
+        context = heap_context
     return [
         ('move', [('x', 0), ('x', 3)]),
         ('move', [('y', heap_memory), ('x', 0)]),
-        ('move', [('y', heap_context), ('x', 1)]),
+        ('move', [('y', context), ('x', 1)]),
         ('move', [('literal', var), ('x', 2)]),
         ('call_ext', [4, ('extfunc', 'common:assign/4')]),
         # valore di ritorno {Memory, Context}
         ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-        ('get_tuple_element', [('x', 0), 1, ('y', heap_context)]),
+        ('get_tuple_element', [('x', 0), 1, ('y', context)]),
     ]
