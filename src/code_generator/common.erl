@@ -19,8 +19,6 @@ assign_aux(Memory, Local, Var, Obj) ->
         error -> Memory
     end,
     
-    % io:format("Memory: ~p~n", [M]),
-    %     io:format("Obj: ~p~n", [Obj]),
     M2 = increase_ref(M, Obj),
     
     % salva l'oggetto nella variabile
@@ -38,8 +36,6 @@ to_memory(Memory, State) ->
     {M3, N}.
 
 increase_ref(Memory, Obj) ->
-    %io:format("Memory: ~p~n", [Memory]),
-    %io:format("Increase REF Obj: ~p~n", [Obj]),
     {RefCounter, State} = orddict:fetch(Obj, Memory),
     orddict:store(Obj, {RefCounter+1, State}, Memory).
 
@@ -149,18 +145,18 @@ get_attribute(Memory, Obj, Name) ->
 % function___call__(Memory, Context, ModuleName, Args)
 dot(M, C, ModuleName, Obj, Attribute) ->
     Res = get_attribute(M, Obj, "__getattribute__"),
+	{M2, AttrState} = base:str___new__(M, Attribute),
     if is_list(Res) ->
         io:format("~p", [Res]),
         Res;
+        % base:object___getattribute__(M, C, )
         % chiama la built-in,
     is_integer(Res) ->
-	{M2, AttrState} = base:str___new__(M, Attribute),
-	% AttrState = get_attribute(M, Obj, Attribute),
+        % base:function___call__(M2, C, ModuleName, [Res, [Obj, AttrState]])
         user_defined_call(M2, C, ModuleName, [Res, Obj, AttrState])
     end.
-        
+
 user_defined_call(Memory, Context, ModuleName, Args) ->
-        % io:format("Bau: ~p~n~p~n~n~n", [Memory, Context]),
 	[Target | P] = Args,
 	TargetState = common:read_memory(Memory, Target),
 	FuncName = orddict:fetch("func_name", TargetState),
@@ -169,8 +165,8 @@ user_defined_call(Memory, Context, ModuleName, Args) ->
 	C = lists:reverse(Context),
 	C2 = lists:sublist(C, Deep),
 	C3 = lists:reverse(C2),
-	Parameters = [Memory, C3, P],
-        % io:format("Miao: ~p~n~n", [Parameters]),
+    Parameters = [Memory, C3, P],
+    % Parameters = [Memory, C3 | [P]],
 	erlang:apply(ModuleName, FuncName, Parameters).
 
 test() ->

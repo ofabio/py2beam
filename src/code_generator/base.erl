@@ -1,7 +1,7 @@
 -module(base).
--export([int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, function___new__/3, str___new__/2, str___add__/3, str___repr__/2, list___new__/2, list___repr__/2, range/3, class___new__/3]).
+-export([int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, function___new__/3, function___call__/4, str___new__/2, str___add__/3, str___repr__/2, list___new__/2, list___repr__/2, range/3, class___new__/3]).
 
-% function___call__/4, 
+% object___getattribute__(M, C, Obj, Attribute) ->
 
 int___new__(Memory, N) ->
     A = orddict:new(),
@@ -111,7 +111,6 @@ list___new__(Memory, L) ->
 list___repr__(Memory, Self) ->
 	SelfState = common:read_memory(Memory, Self),
 	orddict:fetch("__value__", SelfState).
-
 
 % ----- builtins -----
 range(Memory, Low, High) ->
