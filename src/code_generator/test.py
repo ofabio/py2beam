@@ -354,12 +354,12 @@ def test16():
         Class('Pippo', [
             Assign('a', Int(2)),
             Def('__getattribute__', ['self', 'name'], [
-                Return(Int(69))
+                Print(Var('name')),
             ]),
         ]),
-        Debug('memory'),
+        #Debug('memory'),
         Dot(Var('Pippo'), 'a'),
-        Debug('memory'),
+        #Debug('memory'),
     ])
 
 
