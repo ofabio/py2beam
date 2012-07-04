@@ -352,16 +352,16 @@ def test16():
 
     tree = Module([
         Class('Pippo', [
-            Assign('a', Int(2)),
-            Def('__getattribute__', ['self', 'name'], [
+            Assign('a', Int(31)),
+            Def('__etattribute__', ['self', 'name'], [
                 Return(Var('name')),
                 # Print(Var('name')),
             ]),
         ]),
-        #Debug('memory'),
+        # Debug('memory'),
         Print(Dot(Var('Pippo'), 'a')),
         # Print(Int(12)),
-        #Debug('memory'),
+        # Debug('memory'),
     ])
 
 

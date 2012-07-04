@@ -1,5 +1,5 @@
 -module(common).
--export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, call_method/4, read_memory/2, destroy_locals/2, dot/5]).
+-export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, call_method/4, read_memory/2, destroy_locals/2, dot/5, get_attribute/3]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -133,27 +133,38 @@ get_attribute(_, Obj, _) when is_list(Obj) ->
     Obj;
 get_attribute(Memory, Obj, Name) ->
     {_, State} = orddict:fetch(Obj, Memory),
+    % io:format("Obj:~p~nMemory:~p~n", [Obj, Memory]),
     try orddict:fetch(Name, orddict:fetch("__context__", State))
     catch
-        _ ->
+        error:_ ->
             Sup = try orddict:fetch("__class__", State)
-                  catch _ -> "object"
+                  catch error:_ -> "object"
                   end,
             get_attribute(Memory, Sup, Name)
     end.
 
+%call(M, C, ModuleName, Obj, Method, Args) ->
+%    Ref = get_attribute(M, Obj, Method),
+%    {_, State} = orddict:fetch(Obj, M),
+%    Class = orddict:fetch("__type__", State),
+%    C_M = erlang:list_to_atom(Class ++ "_" ++ Method),
+%    erlang:apply(base, C_M, [M, Obj | Args]).
+
+
 % function___call__(Memory, Context, ModuleName, Args)
 dot(M, C, ModuleName, Obj, Attribute) ->
     Res = get_attribute(M, Obj, "__getattribute__"),
-	{M2, AttrState} = base:str___new__(M, Attribute),
     if is_list(Res) ->
-        io:format("~p", [Res]),
-        Res;
+    	C_M = erlang:list_to_atom(Res ++ "_" ++ "__getattribute__"),
+	erlang:apply(base, C_M, [M, Obj, Attribute]);
+        % io:format("~nDot:~p~n", [R]),
         % base:object___getattribute__(M, C, )
         % chiama la built-in,
     is_integer(Res) ->
+	{M2, AttrState} = base:str___new__(M, Attribute),
         % base:function___call__(M2, C, ModuleName, [Res, [Obj, AttrState]])
         user_defined_call(M2, C, ModuleName, [Res, Obj, AttrState])
+	% io:format("~nResponse:~p~n", [Resp]),
     end.
 
 user_defined_call(Memory, Context, ModuleName, Args) ->

@@ -1,7 +1,10 @@
 -module(base).
--export([int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, function___new__/3, function___call__/4, str___new__/2, str___add__/3, str___repr__/2, list___new__/2, list___repr__/2, range/3, class___new__/3]).
+-export([object___getattribute__/3, int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, function___new__/3, function___call__/4, str___new__/2, str___add__/3, str___repr__/2, list___new__/2, list___repr__/2, range/3, class___new__/3]).
 
-% object___getattribute__(M, C, Obj, Attribute) ->
+object___getattribute__(M, Obj, Attribute) ->
+    Res = common:get_attribute(M, Obj, Attribute),
+    %io:format("~nRes BI:~p~n", [Res]),
+    [M, Res].
 
 int___new__(Memory, N) ->
     A = orddict:new(),
