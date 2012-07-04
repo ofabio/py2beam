@@ -143,12 +143,21 @@ get_attribute(Memory, Obj, Name) ->
             get_attribute(Memory, Sup, Name)
     end.
 
-%call(M, C, ModuleName, Obj, Method, Args) ->
-%    Ref = get_attribute(M, Obj, Method),
-%    {_, State} = orddict:fetch(Obj, M),
-%    Class = orddict:fetch("__type__", State),
-%    C_M = erlang:list_to_atom(Class ++ "_" ++ Method),
-%    erlang:apply(base, C_M, [M, Obj | Args]).
+call(M, C, ModuleName, Obj, Method, Args) ->
+    ObjState = common:read_memory(Memory, Obj),
+	Type = orddict:fetch("__type__", ObjState),
+    case Type of 
+        "function" ->
+            
+        "class" ->
+        "instance" ->
+    end.
+        
+   Ref = get_attribute(M, Obj, Method),
+   {_, State} = orddict:fetch(Obj, M),
+   Class = orddict:fetch("__type__", State),
+   C_M = erlang:list_to_atom(Class ++ "_" ++ Method),
+   erlang:apply(base, C_M, [M, Obj | Args]).
 
 
 % function___call__(Memory, Context, ModuleName, Args)
@@ -156,12 +165,12 @@ dot(M, C, ModuleName, Obj, Attribute) ->
     Res = get_attribute(M, Obj, "__getattribute__"),
     if is_list(Res) ->
     	C_M = erlang:list_to_atom(Res ++ "_" ++ "__getattribute__"),
-	erlang:apply(base, C_M, [M, Obj, Attribute]);
+	    erlang:apply(base, C_M, [M, Obj, Attribute]);
         % io:format("~nDot:~p~n", [R]),
         % base:object___getattribute__(M, C, )
         % chiama la built-in,
     is_integer(Res) ->
-	{M2, AttrState} = base:str___new__(M, Attribute),
+	    {M2, AttrState} = base:str___new__(M, Attribute),
         % base:function___call__(M2, C, ModuleName, [Res, [Obj, AttrState]])
         user_defined_call(M2, C, ModuleName, [Res, Obj, AttrState])
 	% io:format("~nResponse:~p~n", [Resp]),

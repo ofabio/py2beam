@@ -3,8 +3,29 @@
 
 object___getattribute__(M, Obj, Attribute) ->
     Res = common:get_attribute(M, Obj, Attribute),
+    if is_list(Res) ->
+        case "__gt__"
+            "__lt__"
+            "__doc__"
+            
+        [{8, [1, [{"__type__", "builtin_func"}, {"func_name", "int___gt__"}]]}]
+    is_integer(Res) ->
+        
+    end.
     %io:format("~nRes BI:~p~n", [Res]),
     [M, Res].
+    
+object___new__(M, C, Obj) ->
+    A = orddict:new(),
+    B = orddict:store("__type__", "instance", A),
+    State = orddict:store("__class__", Obj, B),
+    common:to_memory(Memory, State).
+    
+object___init__() ->
+    ok.
+
+object___call__(M, C, ModuleName, Obj, Params) ->
+	io:format("TypeError: ~p object is not callable~n", [])
 
 int___new__(Memory, N) ->
     A = orddict:new(),
