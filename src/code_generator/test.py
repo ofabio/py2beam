@@ -274,7 +274,7 @@ def test13():
     print '-- TEST 13 --'
     print 'output would be...'
 
-    a = 5
+    a = 8
     b = a
     print b
 
@@ -288,8 +288,87 @@ def test13():
         Debug('memory'),
     ])
 
+def test14():
+    global tree
+    print '-- TEST 14 --'
+    print 'output would be...'
+
+    def fun():
+        class Pippo:
+            a = 5
+            print a
+
+    print '------------'
+
+    tree = Module([
+        Assign('c', Int(5)),
+        Def('pippo_fun', [], [
+            Class('Pippo', [
+                Assign('a', Var('c')),
+                Print(Var('a')),
+            ]),
+            Debug('memory'),
+        ]),
+        Debug('memory'),
+        Call(Var('pippo_fun'), []),
+        Debug('memory'),
+    ])
+    
+def test15():
+    global tree
+    print '-- TEST 15 --'
+    print 'output would be...'
+
+    class Pippo:
+        a = 2
+        print a
+    
+    Pippo = 5
+
+    print '------------'
+
+    tree = Module([
+        Class('Pippo', [
+            Assign('a', Int(2)),
+            Print(Var('a')),
+        ]),
+        Debug('memory'),
+        Assign('Pippo', Int(5)),
+        Debug('memory'),
+    ])
+
+def test16():
+    global tree
+    print '-- TEST 16 --'
+    print 'output would be...'
+
+    class Pippo(object):
+        a = 2
+        def __getattribute__(self, name):
+            return 69
+
+    print Pippo().a
+
+    print '------------'
+
+    tree = Module([
+        Class('Pippo', [
+            Assign('a', Int(31)),
+            Def('__etattribute__', ['self', 'name'], [
+                Return(Var('name')),
+                # Print(Var('name')),
+            ]),
+        ]),
+        # Debug('memory'),
+        Print(Dot(Var('Pippo'), 'a')),
+        # Print(Int(12)),
+        # Debug('memory'),
+    ])
+
+
+
 def main():
-    test1()
+    test16()
     compose()
 
 if __name__ == '__main__':
