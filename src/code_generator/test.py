@@ -19,7 +19,7 @@ def test1():
     global tree
     print '-- TEST 1 --'
     print 'output would be...'
-    
+
     def a():
         print 1
         c = 5
@@ -30,12 +30,13 @@ def test1():
         print d
     a()
     print '------------'
-    
+
     tree = Module([
         Def('a', [], [
             Print(Int(1)),
             Assign('c', Int(5)),
             Assign('d', Int(8)),
+            Debug('context'),
             Call(Var('b'), [Var('c'), Var('d')])]),
         Def('b', ['c', 'd'], [
             Print(Var('c')),
@@ -47,17 +48,17 @@ def test2():
     global tree
     print '-- TEST 2 --'
     print 'output would be...'
-    
+
     for i in range(0, 2):
         print i
     print '------------'
-    
+
     tree = Module([
         For('i', Range(Int(0), Int(2)), [
             Print(Var('i')),
         ])
     ])
-    
+
 def test3():
     global tree
     print '-- TEST 3 --'
@@ -87,16 +88,16 @@ def test4():
     global tree
     print '-- TEST 4 --'
     print 'output would be...'
-    
+
     def a():
         print 5
     for l in range(0, 2):
         a()
         def a():
             print 10
-    
+
     print '------------'
-    
+
     tree = Module([
         Def('a', [], [
             Print(Int(5)),
@@ -108,7 +109,7 @@ def test4():
             ])
         ]),
     ])
-    
+
 def test5():
     global tree
     print '-- TEST 5 --'
@@ -155,12 +156,12 @@ def test6():
         ]),
         Print(Call(Var('hello'), []))
     ])
-    
+
 def test7():
     global tree
     print '-- TEST 7 --'
     print 'output would be...'
-    
+
     a = 5
     def ciao(a):
         print a
@@ -175,7 +176,7 @@ def test7():
         ]),
         Call(Var('ciao'), [Var('a')]),
     ])
-     
+
 def test8():
     global tree
     print '-- TEST 8 --'
@@ -201,7 +202,7 @@ def test9():
     tree = Module([
         Print(Add(Str("ciao "), Str("fabio")))
     ])
-    
+
 def test10():
     global tree
     print '-- TEST 10 --'
@@ -219,11 +220,11 @@ def test10():
     tree = Module([
         Assign('a', Int(9)),
         If([Gt(Var('a'), Str("7"))], [
-            [Print(Str(">7"))], 
+            [Print(Str(">7"))],
             [Print(Str("->")), Print(Str("else!"))]
         ]),
     ])
-    
+
 def test11():
     global tree
     print '-- TEST 11 --'
@@ -243,7 +244,7 @@ def test11():
         Print(Var('pippo')),
         #Sum(Var('pippo'), Var('pluto'))
     ])
-    
+
 def test12():
     global tree
     print '-- TEST 12 --'
@@ -267,7 +268,7 @@ def test12():
         #Debug('context'),
         #Debug('memory'),
     ])
-    
+
 def test13():
     global tree
     print '-- TEST 13 --'
