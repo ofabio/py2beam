@@ -1,7 +1,7 @@
 -module(base).
 -export([object___getattribute__/3, object___new__/2, object___init__/0,
 object___call__/5, int___new__/2, int___add__/3, int___gt__/3,
-int___repr__/2, int_attr__doc__/1, function___new__/3, function___call__/4,
+int___repr__/2, int_attr__doc__/1, function___new__/3, function___new__aux/4, function___call__/4,
 function___repr__/2, str___new__/2, str___add__/3, str___repr__/2,
 list___new__/2, list___repr__/2, range/3, class___new__/3]).
 
@@ -13,15 +13,15 @@ object___getattribute__(M, Obj, Attribute) ->
         Res1 = try erlang:apply(base, FakeC_M, [M])
         catch
             error:_ ->
-                List = erlang:apply(base, module_info, [exports]),
+                List = base:module_info(exports),
                 case lists:keymember(erlang:list_to_atom(C_M), 1, List) of
-                    true -> function___new__aux(M, "builtin_function", C_M, -1);
+                    true -> function___new__aux(M, C_M, -1, "builtin_function");
                     false -> erlang:error("AttributeError: '" ++ Res ++ "' object has no attribute '" ++ Attribute ++ "'")
                 end
         end,
         tuple_to_list(Res1);
     is_integer(Res) ->
-        [M, Res]
+        common:bind_method(M, Res, Obj)
     end.
 
 object___new__(M, Obj) ->
@@ -113,9 +113,9 @@ str___repr__(Memory, Self) ->
     orddict:fetch("__value__", SelfState).
 
 function___new__(Memory, FuncName, Deep) ->
-    function___new__aux(Memory, "function", FuncName, Deep).
+    function___new__aux(Memory, FuncName, Deep, "function").
 
-function___new__aux(Memory, Type, FuncName,  Deep) ->
+function___new__aux(Memory, FuncName,  Deep, Type) ->
     A = orddict:new(),
     B = orddict:store("__type__", Type, A),
     C = orddict:store("func_name", FuncName, B),

@@ -147,11 +147,16 @@ class Def:
         # della funzione vera, e la profondità
         # "function___new__(Memory, FuncName, Deep)"
         # dopodichè assegno l'oggetto alla variabile self.name
+        if self.is_in_class:
+            func_type = "instance_method"
+        else:
+            func_type = "function"
         code = [
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('atom', self.name), ('x', 1)]),
             ('move', [('integer', len(self.ancestors)), ('x', 2)]),
-            ('call_ext', [3, ('extfunc', 'base:function___new__/3')]),
+            ('move', [('literal', func_type), ('x', 3)]),
+            ('call_ext', [3, ('extfunc', 'base:function___new__aux/4')]),
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
             ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
         ]
@@ -643,7 +648,8 @@ class Call:
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('y', heap_context), ('x', 1)]),
             ('move', [('atom', module_name), ('x', 2)]),
-            ('call_ext', [4, ('extfunc', 'base:function___call__/4')]),
+            # ('call_ext', [4, ('extfunc', 'base:function___call__/4')]),
+            ('call_ext', [4, ('extfunc', 'common:call/5')]),
             ('get_list', [('x', 0), ('y', heap_memory), ('x', 0)]),
             ('get_list', [('x', 0), ('x', 0), ('x', 1)]),
         ]

@@ -1,5 +1,5 @@
 -module(common).
--export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, call_method/4, read_memory/2, destroy_locals/2, dot/5, get_attribute/3]).
+-export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, call_method/4, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, bind_method/3, call/5]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -143,23 +143,36 @@ get_attribute(Memory, Obj, Name) ->
             get_attribute(Memory, Sup, Name)
     end.
 
-%call(M, C, ModuleName, Obj, Method, Args) ->
-%    ObjState = common:read_memory(M, Obj),
-%    Type = orddict:fetch("__type__", ObjState),
-%    case Type of
-%        "function" ->
-%
-%        "class" ->
-%        "instance" ->
-%    end.
-%    Ref = get_attribute(M, Obj, Method),
-%    {_, State} = orddict:fetch(Obj, M),
-%    Class = orddict:fetch("__type__", State),
-%    C_M = erlang:list_to_atom(Class ++ "_" ++ Method),
-%    erlang:apply(base, C_M, [M, Obj | Args]).
+bind_method(M, FuncRef, InstRef) ->
+    A = orddict:new(),
+    B = orddict:store("__type__", "bound_method", A),
+    C = orddict:store("__func__", FuncRef, B),
+    State = orddict:store("__inst__", InstRef, C),
+    common:to_memory(M, State).
 
+call(M, C, ModuleName, Obj, Parameters) ->
+    [Obj | Args] = Parameters,
+    ObjState = common:read_memory(M, Obj),
+    Type = orddict:fetch("__type__", ObjState),
+    case Type of
+        "class" ->
+            tuple_to_list(base:object___new__(M, Obj));
+        "instance" ->
+            [M1, Ref] = base:object___getattribute__(M, Obj, "__call__"),
+            Params = [Ref, Obj | Args],
+            user_defined_call(M1, C, ModuleName, Params);
+        "bound_method" ->
+            FuncRef = orddict:fetch("__func__", ObjState),
+            InstRef = orddict:fetch("__inst__", ObjState),
+            Params = [FuncRef, InstRef | Args],
+            user_defined_call(M, C, ModuleName, Params);
+        "builtin_function" ->
+            builtin_call(M, Obj, Args);
+        _ ->
+            Params = [Obj | Args],
+            user_defined_call(M, C, ModuleName, Params)
+    end.
 
-% function___call__(Memory, Context, ModuleName, Args)
 dot(M, C, ModuleName, Obj, Attribute) ->
     Res = get_attribute(M, Obj, "__getattribute__"),
     if is_list(Res) ->
@@ -174,6 +187,12 @@ dot(M, C, ModuleName, Obj, Attribute) ->
         user_defined_call(M2, C, ModuleName, [Res, Obj, AttrState])
     % io:format("~nResponse:~p~n", [Resp]),
     end.
+
+builtin_call(Memory, Obj, Params) ->
+    {_, State} = orddict:fetch(Obj, Memory),
+    FuncName = orddict:fetch("func_name", State),
+    Method = erlang:list_to_atom(FuncName),
+    erlang:apply(base, Method, [Memory, Obj | Params]).
 
 user_defined_call(Memory, Context, ModuleName, Args) ->
     [Target | P] = Args,
