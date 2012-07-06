@@ -313,7 +313,7 @@ def test14():
         Call(Var('pippo_fun'), []),
         Debug('memory'),
     ])
-    
+
 def test15():
     global tree
     print '-- TEST 15 --'
@@ -322,7 +322,7 @@ def test15():
     class Pippo:
         a = 2
         print a
-    
+
     Pippo = 5
 
     print '------------'
@@ -354,12 +354,12 @@ def test16():
     tree = Module([
         Class('Pippo', [
             Assign('a', Int(31)),
-            Def('__etattribute__', ['self', 'name'], [
+            Def('__getattribute__', ['self', 'name'], [
                 Return(Var('name')),
-                # Print(Var('name')),
             ]),
         ]),
         # Debug('memory'),
+        #Print(Dot(Var('Pippo'), 'a')),
         Print(Dot(Var('Pippo'), 'a')),
         # Print(Int(12)),
         # Debug('memory'),

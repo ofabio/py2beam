@@ -97,7 +97,11 @@ def p_small_stmt(p):
 def p_print_stmt(p):
     """print_stmt : PRINT testlist
                   | PRINT """
-    p[0] = Print(p[2])
+    print p[2]
+    if len(p) == 3:
+        p[0] = Print(p[2])
+    else:
+        p[0] = Print() #FIXME
 
 # expr_stmt: testlist (augassign (yield_expr|testlist) |
 #                      ('=' (yield_expr|testlist))*)
@@ -224,7 +228,7 @@ def p_power(p):
 
 def p_atom_name(p):
     """atom : NAME"""
-    p[0] = p[1]
+    p[0] = [Var(p[1])]
 
 def p_atom_number(p):
     """atom : NUMBER
@@ -249,6 +253,7 @@ def p_trailer(p):
 def p_testlist(p):
     """testlist : testlist_multi COMMA
                 | testlist_multi """
+    print "testlist:", p[1]
     if len(p) == 2:
         p[0] = p[1]
     else:
@@ -258,8 +263,8 @@ def p_testlist(p):
         else:
             p[0] = [p[1]]
     # Convert into a tuple?
-    if isinstance(p[0], list):
-        p[0] = tuple(p[0])
+    # if isinstance(p[0], list):
+        # p[0] = tuple(p[0])
 
 def p_testlist_multi(p):
     """testlist_multi : testlist_multi COMMA test

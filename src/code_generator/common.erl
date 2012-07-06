@@ -18,9 +18,9 @@ assign_aux(Memory, Local, Var, Obj) ->
             decrease_ref_del(Memory, OldObj);
         error -> Memory
     end,
-    
+
     M2 = increase_ref(M, Obj),
-    
+
     % salva l'oggetto nella variabile
     L = orddict:store(Var, Obj, Local),
     {M2, L}.
@@ -41,15 +41,15 @@ increase_ref(Memory, Obj) ->
 
 decrease_ref_del(Memory, Obj) ->
     {RefCounter, State} = orddict:fetch(Obj, Memory),
-	Type = orddict:fetch("__type__", State),
+    Type = orddict:fetch("__type__", State),
     M = if Type == "class"; Type == "instance" ->
             ClassContext = orddict:fetch("__context__", State),
             Values = [orddict:fetch(X, ClassContext) || X <- orddict:fetch_keys(ClassContext)],
             decrease_ref_del_aux(Values, Memory);
-	    true ->
-	        Memory
+        true ->
+            Memory
     end,
-    
+
     if RefCounter > 1 ->
            orddict:store(Obj, {RefCounter-1, State}, M);
        RefCounter =:= 1 ->
@@ -63,8 +63,8 @@ decrease_ref_del_aux([Value|Rest], Memory) ->
     decrease_ref_del_aux(Rest, M).
 
 decrease_ref(Memory, Obj) ->
-	{RefCounter, State} = orddict:fetch(Obj, Memory),
-	orddict:store(Obj, {RefCounter-1, State}, Memory).
+    {RefCounter, State} = orddict:fetch(Obj, Memory),
+    orddict:store(Obj, {RefCounter-1, State}, Memory).
 
 %destroy_class_locals() ->
 %    destroy_locals_aux(orddict:fetch_keys(Local), Local, Memory).
@@ -83,26 +83,26 @@ destroy_locals(Memory, [Local|_]) ->
     destroy_locals_aux(orddict:fetch_keys(Local), Local, Memory).
 
 destroy_locals_aux([], _, Memory) ->
-	Memory;
+    Memory;
 destroy_locals_aux([Key|Rest], Local, Memory) ->
-	Obj = orddict:fetch(Key, Local),
-	{_, State} = orddict:fetch(Obj, Memory),
-	Type = orddict:fetch("__type__", State),
+    Obj = orddict:fetch(Key, Local),
+    {_, State} = orddict:fetch(Obj, Memory),
+    Type = orddict:fetch("__type__", State),
     M = if Type == "class"; Type == "instance" ->
             ClassContext = orddict:fetch("__context__", State),
-	        destroy_locals(Memory, [ClassContext]);
-	    true ->
-	        Memory
+            destroy_locals(Memory, [ClassContext]);
+        true ->
+            Memory
     end,
-	M2 = decrease_ref(M, Obj),
-	destroy_locals_aux(Rest, Local, M2).
+    M2 = decrease_ref(M, Obj),
+    destroy_locals_aux(Rest, Local, M2).
 
 read_memory(Memory, Obj) ->
-	{_, State} = orddict:fetch(Obj, Memory),
-	State.
+    {_, State} = orddict:fetch(Obj, Memory),
+    State.
 
 call_method(Memory, Obj, Method, Params) ->
-	{_, State} = orddict:fetch(Obj, Memory),
+    {_, State} = orddict:fetch(Obj, Memory),
     Class = orddict:fetch("__type__", State),
     C_M = erlang:list_to_atom(Class ++ "_" ++ Method),
     erlang:apply(base, C_M, [Memory, Obj | Params]).
@@ -143,51 +143,50 @@ get_attribute(Memory, Obj, Name) ->
             get_attribute(Memory, Sup, Name)
     end.
 
-call(M, C, ModuleName, Obj, Method, Args) ->
-    ObjState = common:read_memory(Memory, Obj),
-	Type = orddict:fetch("__type__", ObjState),
-    case Type of 
-        "function" ->
-            
-        "class" ->
-        "instance" ->
-    end.
-        
-   Ref = get_attribute(M, Obj, Method),
-   {_, State} = orddict:fetch(Obj, M),
-   Class = orddict:fetch("__type__", State),
-   C_M = erlang:list_to_atom(Class ++ "_" ++ Method),
-   erlang:apply(base, C_M, [M, Obj | Args]).
+%call(M, C, ModuleName, Obj, Method, Args) ->
+%    ObjState = common:read_memory(M, Obj),
+%    Type = orddict:fetch("__type__", ObjState),
+%    case Type of
+%        "function" ->
+%
+%        "class" ->
+%        "instance" ->
+%    end.
+%    Ref = get_attribute(M, Obj, Method),
+%    {_, State} = orddict:fetch(Obj, M),
+%    Class = orddict:fetch("__type__", State),
+%    C_M = erlang:list_to_atom(Class ++ "_" ++ Method),
+%    erlang:apply(base, C_M, [M, Obj | Args]).
 
 
 % function___call__(Memory, Context, ModuleName, Args)
 dot(M, C, ModuleName, Obj, Attribute) ->
     Res = get_attribute(M, Obj, "__getattribute__"),
     if is_list(Res) ->
-    	C_M = erlang:list_to_atom(Res ++ "_" ++ "__getattribute__"),
-	    erlang:apply(base, C_M, [M, Obj, Attribute]);
+        C_M = erlang:list_to_atom("object" ++ "_" ++ "__getattribute__"),
+        erlang:apply(base, C_M, [M, Obj, Attribute]);
         % io:format("~nDot:~p~n", [R]),
         % base:object___getattribute__(M, C, )
         % chiama la built-in,
     is_integer(Res) ->
-	    {M2, AttrState} = base:str___new__(M, Attribute),
+        {M2, AttrState} = base:str___new__(M, Attribute),
         % base:function___call__(M2, C, ModuleName, [Res, [Obj, AttrState]])
         user_defined_call(M2, C, ModuleName, [Res, Obj, AttrState])
-	% io:format("~nResponse:~p~n", [Resp]),
+    % io:format("~nResponse:~p~n", [Resp]),
     end.
 
 user_defined_call(Memory, Context, ModuleName, Args) ->
-	[Target | P] = Args,
-	TargetState = common:read_memory(Memory, Target),
-	FuncName = orddict:fetch("func_name", TargetState),
-	Deep = orddict:fetch("deep", TargetState),
-	% calcola il contesto da passare in base alla profondità
-	C = lists:reverse(Context),
-	C2 = lists:sublist(C, Deep),
-	C3 = lists:reverse(C2),
+    [Target | P] = Args,
+    TargetState = common:read_memory(Memory, Target),
+    FuncName = orddict:fetch("func_name", TargetState),
+    Deep = orddict:fetch("deep", TargetState),
+    % calcola il contesto da passare in base alla profondità
+    C = lists:reverse(Context),
+    C2 = lists:sublist(C, Deep),
+    C3 = lists:reverse(C2),
     Parameters = [Memory, C3, P],
     % Parameters = [Memory, C3 | [P]],
-	erlang:apply(ModuleName, FuncName, Parameters).
+    erlang:apply(ModuleName, FuncName, Parameters).
 
 test() ->
     io:format("~p~n", ["test"]),

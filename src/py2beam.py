@@ -10,6 +10,7 @@ class Py2Beam(object):
         pass
 
 if __name__ == '__main__':
+    beam_name = "test"
     scanner = PyScanner()
     code = r'''
 def factorial(n):
@@ -26,13 +27,22 @@ def factorial(n):
 a = 230
 def call_go():
     b = 7
-    print b
+    #print b
 call_go()
 print a
+#print 3
 """
     print code
     parser = PyParser(lexer=scanner)
-    raw_code = parser.parse(code)
-    composer = Composer(raw_code)
+    tree = parser.parse(code)
+    # composer = Composer(beam_name, tree)
+    composer = Composer(beam_name, tree)
     composer.generate()
-    composer.write('prova.beam')
+    composer.write()
+
+
+
+
+
+
+
