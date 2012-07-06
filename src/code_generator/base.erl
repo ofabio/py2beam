@@ -21,7 +21,12 @@ object___getattribute__(M, Obj, Attribute) ->
         end,
         tuple_to_list(Res1);
     is_integer(Res) ->
-        common:bind_method(M, Res, Obj)
+        {_, State} = orddict:fetch(Obj, M),
+        Type = orddict:fetch("__type__", State),
+        if Type == "instance" ->
+            common:bind_method(M, Res, Obj);
+        true -> [M, Res]
+        end
     end.
 
 object___new__(M, Obj) ->

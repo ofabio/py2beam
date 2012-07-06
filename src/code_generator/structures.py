@@ -649,7 +649,7 @@ class Call:
             ('move', [('y', heap_context), ('x', 1)]),
             ('move', [('atom', module_name), ('x', 2)]),
             # ('call_ext', [4, ('extfunc', 'base:function___call__/4')]),
-            ('call_ext', [4, ('extfunc', 'common:call/5')]),
+            ('call_ext', [4, ('extfunc', 'common:call/4')]),
             ('get_list', [('x', 0), ('y', heap_memory), ('x', 0)]),
             ('get_list', [('x', 0), ('x', 0), ('x', 1)]),
         ]

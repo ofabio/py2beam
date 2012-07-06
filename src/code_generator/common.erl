@@ -1,5 +1,5 @@
 -module(common).
--export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, call_method/4, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, bind_method/3, call/5]).
+-export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, call_method/4, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, bind_method/3, call/4]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -150,7 +150,7 @@ bind_method(M, FuncRef, InstRef) ->
     State = orddict:store("__inst__", InstRef, C),
     common:to_memory(M, State).
 
-call(M, C, ModuleName, Obj, Parameters) ->
+call(M, C, ModuleName, Parameters) ->
     [Obj | Args] = Parameters,
     ObjState = common:read_memory(M, Obj),
     Type = orddict:fetch("__type__", ObjState),
@@ -170,6 +170,7 @@ call(M, C, ModuleName, Obj, Parameters) ->
             builtin_call(M, Obj, Args);
         _ ->
             Params = [Obj | Args],
+	    % io:format("PARAMS: ~p~n", [Params]),
             user_defined_call(M, C, ModuleName, Params)
     end.
 
@@ -178,6 +179,7 @@ dot(M, C, ModuleName, Obj, Attribute) ->
     if is_list(Res) ->
         C_M = erlang:list_to_atom("object" ++ "_" ++ "__getattribute__"),
         erlang:apply(base, C_M, [M, Obj, Attribute]);
+        % R;
         % io:format("~nDot:~p~n", [R]),
         % base:object___getattribute__(M, C, )
         % chiama la built-in,
@@ -196,6 +198,7 @@ builtin_call(Memory, Obj, Params) ->
 
 user_defined_call(Memory, Context, ModuleName, Args) ->
     [Target | P] = Args,
+    % io:format("ARGS: ~p~n", [Target]),
     TargetState = common:read_memory(Memory, Target),
     FuncName = orddict:fetch("func_name", TargetState),
     Deep = orddict:fetch("deep", TargetState),
@@ -205,7 +208,10 @@ user_defined_call(Memory, Context, ModuleName, Args) ->
     C3 = lists:reverse(C2),
     Parameters = [Memory, C3, P],
     % Parameters = [Memory, C3 | [P]],
+    % io:format("SONO QUI~nPAR: ~p~n", [Parameters]),
     erlang:apply(ModuleName, FuncName, Parameters).
+    % io:format("FINE: ~p~n", [R]),
+    % R.
 
 test() ->
     io:format("~p~n", ["test"]),

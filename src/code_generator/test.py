@@ -360,7 +360,7 @@ def test16():
         ]),
         # Debug('memory'),
         #Print(Dot(Var('Pippo'), 'a')),
-        Print(Call(Dot(Var('Pippo'), '__etattribute__'), [Int(11)])),
+        Print(Call(Dot(Var('Pippo'), '__etattribute__'), [Var('Pippo'), Int(11)] )),
         # Print(Int(12)),
         # Debug('memory'),
     ])
