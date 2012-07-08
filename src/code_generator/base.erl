@@ -1,7 +1,8 @@
 -module(base).
 -export([object___getattribute__/3, object___new__/2, object___init__/0,
-object___call__/5, int___new__/2, int___add__/3, int___gt__/3,
-int___repr__/2, int_attr__doc__/1, function___new__/3, function___new__aux/4, function___call__/4,
+object___call__/3, int___new__/2, int___add__/3, int___gt__/3,
+int___repr__/2, int_attr__doc__/1, function___new__/3, function___new__aux/4,
+function___call__/4,
 function___repr__/2, str___new__/2, str___add__/3, str___repr__/2,
 list___new__/2, list___repr__/2, range/3, class___new__/3]).
 
@@ -9,12 +10,12 @@ object___getattribute__(M, Obj, Attribute) ->
     Res = common:get_attribute(M, Obj, Attribute),
     if is_list(Res) ->
         FakeC_M = erlang:list_to_atom(Res ++ "_attr" ++ Attribute),
-        C_M = Res ++ "_" ++ Attribute,
+        C_M = erlang:list_to_atom(Res ++ "_" ++ Attribute),
         Res1 = try erlang:apply(base, FakeC_M, [M])
         catch
             error:_ ->
                 List = base:module_info(exports),
-                case lists:keymember(erlang:list_to_atom(C_M), 1, List) of
+                case lists:keymember(C_M, 1, List) of
                     true -> function___new__aux(M, C_M, -1, "builtin_function");
                     false -> erlang:error("AttributeError: '" ++ Res ++ "' object has no attribute '" ++ Attribute ++ "'")
                 end
@@ -24,7 +25,7 @@ object___getattribute__(M, Obj, Attribute) ->
         {_, State} = orddict:fetch(Obj, M),
         Type = orddict:fetch("__type__", State),
         if Type == "instance" ->
-            common:bind_method(M, Res, Obj);
+                tuple_to_list(common:bind_method(M, Res, Obj));
         true -> [M, Res]
         end
     end.
@@ -32,15 +33,15 @@ object___getattribute__(M, Obj, Attribute) ->
 object___new__(M, Obj) ->
     A = orddict:new(),
     B = orddict:store("__type__", "instance", A),
-    State = orddict:store("__class__", Obj, B),
-    common:to_memory(M, State).
+    C = orddict:store("__context__", orddict:new(), B),
+    State = orddict:store("__class__", Obj, C),
+    tuple_to_list(common:to_memory(M, State)).
 
 object___init__() ->
     ok.
 
-object___call__(_, _, _, _, _) ->
-    io:format("TypeError: ~p object is not callable~n", ["generic"]),
-    ok.
+object___call__(_, _, _) ->
+    erlang:error("TypeError: object is not callable").
 
 int___new__(Memory, N) ->
     A = orddict:new(),
