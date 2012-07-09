@@ -8,22 +8,27 @@ list___new__/2, list___repr__/2, range/3, class___new__/3]).
 
 object___getattribute__(M, Obj, Attribute) ->
     Res = common:get_attribute(M, Obj, Attribute),
+    {_, State} = orddict:fetch(Obj, M),
+    Type = orddict:fetch("__type__", State),
     if is_list(Res) ->
         FakeC_M = erlang:list_to_atom(Res ++ "_attr" ++ Attribute),
         C_M = erlang:list_to_atom(Res ++ "_" ++ Attribute),
-        Res1 = try erlang:apply(base, FakeC_M, [M])
+        try erlang:apply(base, FakeC_M, [M])
         catch
             error:_ ->
                 List = base:module_info(exports),
                 case lists:keymember(C_M, 1, List) of
-                    true -> function___new__aux(M, C_M, -1, "builtin_function");
+                    true -> FunRef = tuple_to_list(function___new__aux(M, C_M, -1, "builtin_function")),
+                        if Type == "instance" ->
+                                [M1, FunObj] = FunRef,
+                                tuple_to_list(common:bind_method(M1, FunObj, Obj));
+                            true -> FunRef
+                        end;
                     false -> erlang:error("AttributeError: '" ++ Res ++ "' object has no attribute '" ++ Attribute ++ "'")
                 end
-        end,
-        tuple_to_list(Res1);
+        end;
+        % tuple_to_list(Res1);
     is_integer(Res) ->
-        {_, State} = orddict:fetch(Obj, M),
-        Type = orddict:fetch("__type__", State),
         if Type == "instance" ->
                 tuple_to_list(common:bind_method(M, Res, Obj));
         true -> [M, Res]
@@ -45,7 +50,7 @@ object___call__(_, _, _) ->
 
 int___new__(Memory, N) ->
     A = orddict:new(),
-    B = orddict:store("__type__", "int", A),
+    B = orddict:store("__type__", "instance", A),
     C = orddict:store("__class__", "int", B),
     State = orddict:store("__value__", N, C),
     common:to_memory(Memory, State).
@@ -96,8 +101,9 @@ int___repr__(Memory, Self) ->
 
 str___new__(Memory, N) ->
     A = orddict:new(),
-    B = orddict:store("__type__", "str", A),
-    State = orddict:store("__value__", N, B),
+    B = orddict:store("__type__", "instance", A),
+    C = orddict:store("__class__", "str", B),
+    State = orddict:store("__value__", N, C),
     common:to_memory(Memory, State).
 
 str___add__(Memory, Self, Other) ->
@@ -159,8 +165,9 @@ class___new__(Memory, ClassName, ClassContext) ->
 % ----- list -----
 list___new__(Memory, L) ->
     A = orddict:new(),
-    B = orddict:store("__type__", "list", A),
-    State = orddict:store("__value__", L, B),
+    B = orddict:store("__type__", "instance", A),
+    C = orddict:store("__class__", "list", B),
+    State = orddict:store("__value__", L, C),
     common:to_memory(Memory, State).
 
 %list___getitem__(Memory, Self, N) ->

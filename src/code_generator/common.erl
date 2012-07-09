@@ -159,28 +159,37 @@ call(M, C, ModuleName, Parameters) ->
             base:object___new__(M, Obj);
             % R = base:object___new__(M, Obj),
             % io:format("R: ~p~n", [R]),
-	    % R;
+        % R;
         "instance" ->
             [M1, Ref] = base:object___getattribute__(M, Obj, "__call__"),
             FuncState = common:read_memory(M1, Ref),
             FuncType = orddict:fetch("__type__", FuncState),
             Params = [Ref, Obj | Args],
-	    if FuncType == "builtin_function" ->
-                user_defined_call(M1, C, base, Params);
-	    true ->
-                user_defined_call(M1, C, ModuleName, Params)
-            end;
+            if FuncType == "builtin_function" ->
+                    user_defined_call(M1, C, base, Params);
+            true ->
+                    user_defined_call(M1, C, ModuleName, Params)
+                end;
         "bound_method" ->
             FuncRef = orddict:fetch("__func__", ObjState),
             InstRef = orddict:fetch("__inst__", ObjState),
-            Params = [FuncRef, InstRef | Args],
-            user_defined_call(M, C, ModuleName, Params);
+            FuncState = common:read_memory(M, FuncRef),
+            FuncType = orddict:fetch("__type__", FuncState),
+            if FuncType == "builtin_function" ->
+                    % user_defined_call(M, C, base, Params);
+                    Params = [InstRef | Args],
+                    builtin_call(M, FuncRef, Params);
+                    % io:format("PARAMS: ~p~n", [R]),
+                    % R;
+            true ->
+                    Params = [FuncRef, InstRef | Args],
+                    user_defined_call(M, C, ModuleName, Params)
+                end;
         "builtin_function" ->
-            io:format("SONO QUI~n"),
             builtin_call(M, Obj, Args);
         _ ->
             Params = [Obj | Args],
-	    % io:format("PARAMS: ~p~n", [Params]),
+        % io:format("PARAMS: ~p~n", [Params]),
             user_defined_call(M, C, ModuleName, Params)
     end.
 
@@ -189,7 +198,7 @@ dot(M, C, ModuleName, Obj, Attribute) ->
     if is_list(Res) ->
         C_M = erlang:list_to_atom("object" ++ "_" ++ "__getattribute__"),
         erlang:apply(base, C_M, [M, Obj, Attribute]);
-	% io:format("GA: ~p~n", [R]),
+    % io:format("GA: ~p~n", [R]),
         % R;
         % io:format("~nDot:~p~n", [R]),
         % base:object___getattribute__(M, C, )
@@ -204,7 +213,7 @@ dot(M, C, ModuleName, Obj, Attribute) ->
 builtin_call(Memory, Obj, Params) ->
     {_, State} = orddict:fetch(Obj, Memory),
     FuncName = orddict:fetch("func_name", State),
-    erlang:apply(base, FuncName, [Memory, Obj | Params]).
+    erlang:apply(base, FuncName, [Memory | Params]).
 
 user_defined_call(Memory, Context, ModuleName, Args) ->
     [Target | P] = Args,
@@ -212,8 +221,8 @@ user_defined_call(Memory, Context, ModuleName, Args) ->
     % io:format("ARGS: ~p~n", [TargetState]),
     FuncType = orddict:fetch("__type__", TargetState),
     if FuncType == "bound_method" ->
-		    RealTarget = orddict:fetch("__func__", TargetState),
-		    TargetState1 = common:read_memory(Memory, RealTarget);
+            RealTarget = orddict:fetch("__func__", TargetState),
+            TargetState1 = common:read_memory(Memory, RealTarget);
     true -> TargetState1 = TargetState
     end,
     FuncName = orddict:fetch("func_name", TargetState1),
@@ -223,7 +232,7 @@ user_defined_call(Memory, Context, ModuleName, Args) ->
     if Deep >= 0 ->
         C2 = lists:sublist(C, Deep);
     true ->
-	C2 = []
+    C2 = []
     end,
     C3 = lists:reverse(C2),
     Parameters = [Memory, C3, P],

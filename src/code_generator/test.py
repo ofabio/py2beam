@@ -468,7 +468,7 @@ def test20():
 
 
 def main():
-    test19()
+    test20()
     compose()
 
 if __name__ == '__main__':
