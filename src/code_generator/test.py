@@ -454,15 +454,17 @@ def test20():
     print '-- TEST 20 --'
     print 'output would be...'
 
-    print (5).__repr__()
+    #print (5).__repr__()
+    (5).__repr__
 
     print '------------'
 
     tree = Module([
         # Debug('memory'),
-        Print(Call(Dot(Int(5), '__repr__'), [] )),
+        Print(Call(Dot(Int(5), '__repr__'), [])),
+        # Dot(Int(5), '__repr__'),
         # Print(Dot(Var('p'), 'fun1')),
-        # Debug('memory'),
+        Debug('memory'),
     ])
 
 

@@ -1,7 +1,7 @@
 -module(base).
 -export([object___getattribute__/3, object___new__/2, object___init__/0,
 object___call__/3, int___new__/2, int___add__/3, int___gt__/3,
-int___repr__/2, int_attr__doc__/1, function___new__/3, function___new__aux/4,
+int___repr__/2, int_attr__doc__/1, function___new__/3,
 function___call__/4,
 function___repr__/2, str___new__/2, str___add__/3, str___repr__/2,
 list___new__/2, list___repr__/2, range/3, class___new__/3]).
@@ -9,30 +9,29 @@ list___new__/2, list___repr__/2, range/3, class___new__/3]).
 object___getattribute__(M, Obj, Attribute) ->
     Res = common:get_attribute(M, Obj, Attribute),
     {_, State} = orddict:fetch(Obj, M),
-    Type = orddict:fetch("__type__", State),
-    if is_list(Res) ->
-        FakeC_M = erlang:list_to_atom(Res ++ "_attr" ++ Attribute),
-        C_M = erlang:list_to_atom(Res ++ "_" ++ Attribute),
-        try erlang:apply(base, FakeC_M, [M])
-        catch
-            error:_ ->
-                List = base:module_info(exports),
-                case lists:keymember(C_M, 1, List) of
-                    true -> FunRef = tuple_to_list(function___new__aux(M, C_M, -1, "builtin_function")),
-                        if Type == "instance" ->
-                                [M1, FunObj] = FunRef,
-                                tuple_to_list(common:bind_method(M1, FunObj, Obj));
-                            true -> FunRef
-                        end;
-                    false -> erlang:error("AttributeError: '" ++ Res ++ "' object has no attribute '" ++ Attribute ++ "'")
-                end
-        end;
-        % tuple_to_list(Res1);
-    is_integer(Res) ->
-        if Type == "instance" ->
-                tuple_to_list(common:bind_method(M, Res, Obj));
-        true -> [M, Res]
-        end
+    if 
+        is_list(Res) ->
+            FakeC_M = erlang:list_to_atom(Res ++ "_attr" ++ Attribute),
+            C_M = erlang:list_to_atom(Res ++ "_" ++ Attribute),
+            try erlang:apply(base, FakeC_M, [M])
+            catch
+                error:_ ->
+                    List = base:module_info(exports),
+                    case lists:keymember(C_M, 1, List) of
+                        true ->
+                            case orddict:fetch("__type__", State) of
+                                "instance" -> methodwrapper___new__(M, C_M, Obj);
+                                _ -> wrapperdescriptor___new__(M, C_M)
+                            end;
+                        false -> erlang:error("AttributeError: '" ++ Res ++ "' object has no attribute '" ++ Attribute ++ "'")
+                    end
+            end;
+        is_integer(Res) ->
+            case orddict:fetch("__type__", State) of
+                "class" -> [M, Res];
+                
+                "instance" -> instancemethodBound___new__(M, Res, Obj)
+            end
     end.
 
 object___new__(M, Obj) ->
@@ -124,12 +123,11 @@ str___repr__(Memory, Self) ->
     SelfState = common:read_memory(Memory, Self),
     orddict:fetch("__value__", SelfState).
 
-function___new__(Memory, FuncName, Deep) ->
-    function___new__aux(Memory, FuncName, Deep, "function").
+% ----- function -----
 
-function___new__aux(Memory, FuncName,  Deep, Type) ->
+function___new__(Memory, FuncName,  Deep) ->
     A = orddict:new(),
-    B = orddict:store("__type__", Type, A),
+    B = orddict:store("__type__", "function", A),
     C = orddict:store("func_name", FuncName, B),
     State = orddict:store("deep", Deep, C),
     common:to_memory(Memory, State).
@@ -153,6 +151,38 @@ function___repr__(Memory, Self) ->
     Fn = orddict:fetch("func_name", SelfState),
     io:format("<bound ~p ~p at ~p>~n", [Type, Fn, Self]).
 
+% ----- instancemethod -----
+instancemethod___new__(Memory, FuncName, Deep) ->
+    A = orddict:new(),
+    B = orddict:store("__type__", "instancemethod", A),
+    C = orddict:store("func_name", FuncName, B),
+    State = orddict:store("deep", Deep, C),
+    common:to_memory(Memory, State).
+
+instancemethodBound___new__(Memory, UnboundObj, Self) ->
+    UnboundState = common:read_memory(Memory, UnboundObj),
+    A = orddict:new(),
+    B = orddict:store("__type__", "instancemethod", A),
+    C = orddict:store("__self__", Self, B),
+    D = orddict:store("func_name", orddict:fetch("func_name", UnboundState), C),
+    State = orddict:store("deep", orddict:fetch("deep", UnboundState), D),
+    common:to_memory(Memory, State).
+
+
+% ----- method-wrapper -----
+methodwrapper___new__(Memory, FuncName, Self) ->
+    A = orddict:new(),
+    B = orddict:store("__type__", "methodwrapper", A),
+    C = orddict:store("__name__", FuncName, B),
+    State = orddict:store("__self__", Self, C),
+    common:to_memory(Memory, State).
+
+% ----- wrapper_descriptor -----
+wrapperdescriptor___new__(Memory, FuncName) ->
+    A = orddict:new(),
+    B = orddict:store("__type__", "wrapperdescriptor", A),
+    State = orddict:store("__name__", FuncName, B),
+    common:to_memory(Memory, State).
 
 % ----- class -----
 class___new__(Memory, ClassName, ClassContext) ->

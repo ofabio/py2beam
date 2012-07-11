@@ -508,8 +508,8 @@ class Dot:
             ('move', [('atom', self.module_name), ('x', 2)]),
             ('move', [('literal', self.attribute), ('x', 4)]),
             ('call_ext', [5, ('extfunc', 'common:dot/5')]),
-            ('get_list', [('x', 0), ('y', heap_memory), ('x', 0)]),
-            ('get_list', [('x', 0), ('x', 0), ('x', 1)]),
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
         ]
         #code += print_register(('x', 0))
         return code
