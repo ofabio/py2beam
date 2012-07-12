@@ -1,9 +1,9 @@
 -module(base).
 -export([object___getattribute__/3, object___new__/2, object___init__/0, object___call__/3, 
-         int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, int_attr__doc__/1, 
+         int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
          function___new__/3, function___call__/4, function___repr__/2, 
-         instancemethod___new__/3,
-         str___new__/2, str___add__/3, str___repr__/2,
+         instancemethod___new__/3, instancemethod___print__/2,
+         str___new__/2, str___add__/3, str___repr__/2, str___print__/2,
          list___new__/2, list___repr__/2, 
          range/3, class___new__/4]).
 
@@ -54,8 +54,7 @@ object___call__(_, _, _) ->
 int___new__(Memory, N) ->
     A = orddict:new(),
     B = orddict:store("__type__", "int", A),
-    C = orddict:store("__class__", "int", B),
-    State = orddict:store("__value__", N, C),
+    State = orddict:store("__value__", N, B),
     common:to_memory(Memory, State).
 
 int___add__(Memory, Self, Other) ->
@@ -101,13 +100,16 @@ int___repr__(Memory, Self) ->
     Val = orddict:fetch("__value__", SelfState),
     str___new__(Memory, Val).
 
+int___print__(Memory, Self) ->
+    SelfState = common:read_memory(Memory, Self),
+    orddict:fetch("__value__", SelfState).
+
 % --------------
 
 str___new__(Memory, N) ->
     A = orddict:new(),
     B = orddict:store("__type__", "str", A),
-    C = orddict:store("__class__", "str", B),
-    State = orddict:store("__value__", N, C),
+    State = orddict:store("__value__", N, B),
     common:to_memory(Memory, State).
 
 str___add__(Memory, Self, Other) ->
@@ -125,6 +127,11 @@ str___add__(Memory, Self, Other) ->
     end.
 
 str___repr__(Memory, Self) ->
+    SelfState = common:read_memory(Memory, Self),
+    Val = orddict:fetch("__value__", SelfState),
+    str___new__(Memory, Val).
+    
+str___print__(Memory, Self) ->
     SelfState = common:read_memory(Memory, Self),
     orddict:fetch("__value__", SelfState).
 
@@ -173,6 +180,11 @@ instancemethodBound___new__(Memory, UnboundObj, Self) ->
     State = orddict:store("deep", orddict:fetch("deep", UnboundState), D),
     common:to_memory(Memory, State).
 
+instancemethod___print__(Memory, Self) ->
+    % SelfState = common:read_memory(Memory, Self),
+    % orddict:fetch("__value__", SelfState).
+    % <bound method Pippo.hello of <__main__.Pippo object at 0x1075b8390>>
+    "porca l'oca!".
 
 % ----- method-wrapper -----
 methodwrapper___new__(Memory, FuncName, Self) ->
@@ -193,9 +205,10 @@ wrapperdescriptor___new__(Memory, FuncName) ->
 class___new__(Memory, ClassName, ClassContext, BeautyName) ->
     A = orddict:new(),
     B = orddict:store("__type__", "class", A),
-    C = orddict:store("class_name", ClassName, B),
-    D = orddict:store("beauty_name", BeautyName, C),
-    State = orddict:store("__context__", ClassContext, D),
+    C = orddict:store("__class__", "object", B),
+    D = orddict:store("class_name", ClassName, C),
+    E = orddict:store("beauty_name", BeautyName, D),
+    State = orddict:store("__context__", ClassContext, E),
     common:to_memory(Memory, State).
 
 % ----- list -----

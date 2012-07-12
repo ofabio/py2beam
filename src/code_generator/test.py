@@ -426,28 +426,26 @@ def test19():
     print '-- TEST 19 --'
     print 'output would be...'
 
-    # class Pippo(object):
-    #     a = 2
-    #     def __call_(self):
-    #         return 15
-    # 
-    # p = Pippo()
-    # print p()
+    class Pippo(object):
+        a = 2
+        def __call__(self):
+            return 15
+    
+    p = Pippo()
+    print p()
 
     print '------------'
 
     tree = Module([
         Class('Pippo', [
             Assign('a', Int(2)),
-            Def('__call_', ['self'], [
+            Def('__call__', ['self'], [
                 Return(Int(15)),
             ]),
         ]),
         Assign('p', Call(Var('Pippo'), [])),
         # Debug('memory'),
         Print(Call(Var('p'), [])),
-        # Print(Dot(Var('p'), 'fun1')),
-        # Debug('memory'),
     ])
 
 def test20():
@@ -495,27 +493,29 @@ def test22():
     print 'output would be...'
 
     class Pippo(object):
-        a = 2
-        def __call__(self):
-            return 15
+        def hello(self):
+            return 6
 
     p = Pippo()
+    print p.hello
 
     print '------------'
 
     tree = Module([
         Class('Pippo', [
-            Assign('a', Int(2)),
-            Def('__call__', ['self'], [
-                Return(Int(15)),
+            Def('hello', ['self'], [
+                Return(Int(6)),
             ]),
         ]),
         Assign('p', Call(Var('Pippo'), [])),
-        Debug('memory'),
+        
+        # Dot(Var('p'), 'hello'),
+        # Debug('memory'),
+        Print(Dot(Var('p'), 'hello')),
     ])
 
 def main():
-    test19()
+    test22()
     compose()
 
 if __name__ == '__main__':

@@ -130,18 +130,33 @@ dict_list_merge_aux([D|L], Dict) ->
 get_first_of_three(_, Value1, _) -> Value1.
 
 
-get_attribute(_, Obj, _) when is_list(Obj) ->
-    Obj;
+% get_attribute(_, Obj, _) when is_list(Obj) ->
+%     Obj;
 get_attribute(Memory, Obj, Name) ->
     {_, State} = orddict:fetch(Obj, Memory),
     % io:format("Obj:~p~nMemory:~p~n", [Obj, Memory]),
     try orddict:fetch(Name, orddict:fetch("__context__", State))
     catch
         error:_ ->
-            Sup = try orddict:fetch("__class__", State)
-                  catch error:_ -> "object"
-                  end,
-            get_attribute(Memory, Sup, Name)
+            % non esiste l'attributo nel contesto!
+            % se l'attributo __class__ non c'è oppure contiene una
+            % stringa allora ritorna l'attributo __type__
+            Type = orddict:fetch("__type__", State),
+            try 
+                Sup = orddict:fetch("__class__", State),
+                if 
+                    is_list(Sup) -> Type;
+                    true -> get_attribute(Memory, Sup, Name)
+                end
+              catch error:_ -> 
+                  Type
+              end
+                
+            % Sup = try orddict:fetch("__class__", State)
+            %       catch error:_ -> 
+            %           Type
+            %       end,
+            % get_attribute(Memory, Sup, Name)
     end.
 
 % bind_method(M, FuncRef, InstRef) ->
@@ -157,20 +172,6 @@ call(M, C, ModuleName, Obj, Args) ->
     case Type of
         "class" ->
             base:object___new__(M, Obj);
-            % R = base:object___new__(M, Obj),
-            % io:format("R: ~p~n", [R]),
-        % R;
-        % "instance" ->
-        %     [M1, Ref] = base:object___getattribute__(M, Obj, "__call__"),
-        %     FuncState = common:read_memory(M1, Ref),
-        %     FuncType = orddict:fetch("__type__", FuncState),
-        %     Params = [Ref, Obj | Args],
-        %     if 
-        %         FuncType == "builtin_function" ->
-        %             user_defined_call(M1, C, base, Params);
-        %         true ->
-        %             user_defined_call(M1, C, ModuleName, Params)
-        %     end;
         
         "instance" ->
             Res = common:get_attribute(M, Obj, "__call__"),
@@ -186,8 +187,6 @@ call(M, C, ModuleName, Obj, Args) ->
                     Params = [Res, Obj | Args],
                     user_defined_call(M, C, ModuleName, Params)
             end;
-            % FuncState = common:read_memory(M1, Ref),
-            % FuncType = orddict:fetch("__type__", FuncState),
                 
         "methodwrapper" ->
             FuncName = orddict:fetch("func_name", ObjState),
@@ -235,23 +234,25 @@ print(M, Obj) ->
     Res = get_attribute(M, Obj, "__repr__"),
     if 
         is_list(Res) ->
-            % io:format("~p",[Res]),
-            case with_value(Res) of
-                true ->
-                    ObjState = common:read_memory(M, Obj),
-                    Val = orddict:fetch("__value__", ObjState),
-                    io:format("~p~n", [Val])
-            end
+            Print = erlang:apply(base, list_to_atom(Res ++ "___print__"), [M, Obj]),
+            io:format("~p~n", [Print])
+            
+            % case with_value(Res) of
+            %     true ->
+            %         ObjState = common:read_memory(M, Obj),
+            %         Val = orddict:fetch("__value__", ObjState),
+            %         io:format("~p~n", [Val])
+            % end
         % is_integer(Res) ->
         %     user_defined_call(M, C, ModuleName, [Res, Obj])
     end.
     
-with_value("int") ->
-    true;
-with_value("str") ->
-    true;
-with_value(_) ->
-    false.
+% with_value("int") ->
+%     true;
+% with_value("str") ->
+%     true;
+% with_value(_) ->
+%     false.
     
 is_builtin_or_intance(A) ->
     case is_builtin(A) of
