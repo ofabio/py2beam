@@ -1,6 +1,6 @@
 -module(common).
 -export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, 
-         call_method/4, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, call/5]).
+         print/2, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, call/5]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -102,11 +102,11 @@ read_memory(Memory, Obj) ->
     {_, State} = orddict:fetch(Obj, Memory),
     State.
 
-call_method(Memory, Obj, Method, Params) ->
-    {_, State} = orddict:fetch(Obj, Memory),
-    Class = orddict:fetch("__type__", State),
-    C_M = erlang:list_to_atom(Class ++ "_" ++ Method),
-    erlang:apply(base, C_M, [Memory, Obj | Params]).
+% call_method(Memory, Obj, Method, Params) ->
+%     {_, State} = orddict:fetch(Obj, Memory),
+%     Class = orddict:fetch("__type__", State),
+%     C_M = erlang:list_to_atom(Class ++ "_" ++ Method),
+%     erlang:apply(base, C_M, [Memory, Obj | Params]).
 
 % get_from_class_context(ClassContext, Context, Var) ->
 %     get_from_context([ClassContext|Context], Var).
@@ -212,6 +212,21 @@ dot(M, C, ModuleName, Obj, Attribute) ->
         is_integer(Res) ->
             {M2, Attribute} = base:str___new__(M, Attribute),
             user_defined_call(M2, C, ModuleName, [Res, Obj, Attribute])
+    end.
+    
+print(M, Obj) ->
+    Res = get_attribute(M, Obj, "__repr__"),
+    if 
+        is_list(Res) ->
+            % io:format("~p",[Res]),
+            case Res of
+                "str" ->
+                    ObjState = common:read_memory(M, Obj),
+                    Val = orddict:fetch("__value__", ObjState),
+                    io:format("~p~n", [Val])
+            end
+        % is_integer(Res) ->
+        %     user_defined_call(M, C, ModuleName, [Res, Obj])
     end.
 
 % builtin_call(Memory, Obj, Params) ->

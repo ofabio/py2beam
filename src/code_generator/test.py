@@ -461,10 +461,9 @@ def test20():
 
     tree = Module([
         # Debug('memory'),
-        # Print(Call(Dot(Int(5), '__repr__'), [])),
-        Call(Dot(Int(5), '__repr__'), []),
-        # Print(Dot(Var('p'), 'fun1')),
-        Debug('memory'),
+        Print(Call(Dot(Int(5), '__repr__'), [])),
+        # Call(Dot(Int(5), '__repr__'), []),
+        # Debug('memory'),
     ])
 
 

@@ -606,19 +606,11 @@ class Print:
         obj.is_in_class = self.is_in_class
         code += obj.generate()
         code += [
-            # chiama il metodo __repr__ dell'oggetto
             ('move', [('x', 0), ('x', 1)]),
             ('move', [('y', heap_memory), ('x', 0)]),
-            ('move', [('literal', '__repr__'), ('x', 2)]),
-            ('move', [('nil', None), ('x', 3)]),
-            ('call_ext', [4, ('extfunc', 'common:call_method/4')]),
-            
-            # stampa
-            ('put_list', [('x', 0), ('nil', None), ('x', 1)]),
-            ('move', [('literal', '~p~n')]),
-            ('int_code_end', []),
-            ('call_ext', [2, ('extfunc', 'io:format/2')]),
+            ('call_ext', [4, ('extfunc', 'common:print/2')]),
         ]
+        # se la print dovesse ritornare la memoria ricordarsi di salvarla
         return code
                 
 class Call:
