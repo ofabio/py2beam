@@ -644,14 +644,13 @@ class Call:
         code += from_stack(len(params) + 1)
         
         code += [
-            ('move', [('x', 2), ('x', 3)]),
+            ('get_list', [('x', 2), ('x', 3), ('x', 4)]),
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('y', heap_context), ('x', 1)]),
             ('move', [('atom', module_name), ('x', 2)]),
-            # ('call_ext', [4, ('extfunc', 'base:function___call__/4')]),
-            ('call_ext', [4, ('extfunc', 'common:call/4')]),
-            ('get_list', [('x', 0), ('y', heap_memory), ('x', 0)]),
-            ('get_list', [('x', 0), ('x', 0), ('x', 1)]),
+            ('call_ext', [5, ('extfunc', 'common:call/5')]),
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
         ]
         return code
 

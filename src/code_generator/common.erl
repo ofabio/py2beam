@@ -1,5 +1,6 @@
 -module(common).
--export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, call_method/4, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, call/4]).
+-export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, 
+         call_method/4, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, call/5]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -150,8 +151,7 @@ get_attribute(Memory, Obj, Name) ->
 %     State = orddict:store("__inst__", InstRef, C),
 %     common:to_memory(M, State).
 
-call(M, C, ModuleName, Parameters) ->
-    [Obj | Args] = Parameters,
+call(M, C, ModuleName, Obj, Args) ->
     ObjState = common:read_memory(M, Obj),
     Type = orddict:fetch("__type__", ObjState),
     case Type of
@@ -165,28 +165,39 @@ call(M, C, ModuleName, Parameters) ->
             FuncState = common:read_memory(M1, Ref),
             FuncType = orddict:fetch("__type__", FuncState),
             Params = [Ref, Obj | Args],
-            if FuncType == "builtin_function" ->
+            if 
+                FuncType == "builtin_function" ->
                     user_defined_call(M1, C, base, Params);
-            true ->
+                true ->
                     user_defined_call(M1, C, ModuleName, Params)
-                end;
-        "bound_method" ->
-            FuncRef = orddict:fetch("__func__", ObjState),
-            InstRef = orddict:fetch("__inst__", ObjState),
-            FuncState = common:read_memory(M, FuncRef),
-            FuncType = orddict:fetch("__type__", FuncState),
-            if FuncType == "builtin_function" ->
-                    % user_defined_call(M, C, base, Params);
-                    Params = [InstRef | Args],
-                    builtin_call(M, FuncRef, Params);
-                    % io:format("PARAMS: ~p~n", [R]),
-                    % R;
-            true ->
-                    Params = [FuncRef, InstRef | Args],
-                    user_defined_call(M, C, ModuleName, Params)
-                end;
-        "builtin_function" ->
-            builtin_call(M, Obj, Args);
+            end;
+                
+        "methodwrapper" ->
+            FuncName = orddict:fetch("func_name", ObjState),
+            Self = orddict:fetch("__self__", ObjState),
+            % io:format("FuncName: ~p~n", [FuncName]),
+            % io:format("Self: ~p~n", [Self]),
+            % io:format("Argums: ~p~n", [[M, Self | Args]]),
+            
+            erlang:apply(base, FuncName, [M, Self | Args]);
+            
+        % "bound_method" ->
+        %     FuncRef = orddict:fetch("__func__", ObjState),
+        %     InstRef = orddict:fetch("__inst__", ObjState),
+        %     FuncState = common:read_memory(M, FuncRef),
+        %     FuncType = orddict:fetch("__type__", FuncState),
+        %     if FuncType == "builtin_function" ->
+        %             % user_defined_call(M, C, base, Params);
+        %             Params = [InstRef | Args],
+        %             builtin_call(M, FuncRef, Params);
+        %             % io:format("PARAMS: ~p~n", [R]),
+        %             % R;
+        %     true ->
+        %             Params = [FuncRef, InstRef | Args],
+        %             user_defined_call(M, C, ModuleName, Params)
+        %         end;
+        % "builtin_function" ->
+        %     builtin_call(M, Obj, Args);
         _ ->
             Params = [Obj | Args],
         % io:format("PARAMS: ~p~n", [Params]),
@@ -203,10 +214,10 @@ dot(M, C, ModuleName, Obj, Attribute) ->
             user_defined_call(M2, C, ModuleName, [Res, Obj, Attribute])
     end.
 
-builtin_call(Memory, Obj, Params) ->
-    {_, State} = orddict:fetch(Obj, Memory),
-    FuncName = orddict:fetch("func_name", State),
-    erlang:apply(base, FuncName, [Memory | Params]).
+% builtin_call(Memory, Obj, Params) ->
+%     {_, State} = orddict:fetch(Obj, Memory),
+%     FuncName = orddict:fetch("func_name", State),
+%     erlang:apply(base, FuncName, [Memory | Params]).
 
 user_defined_call(Memory, Context, ModuleName, Args) ->
     [Target | P] = Args,

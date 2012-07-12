@@ -39,7 +39,7 @@ object___new__(M, Obj) ->
     B = orddict:store("__type__", "instance", A),
     C = orddict:store("__context__", orddict:new(), B),
     State = orddict:store("__class__", Obj, C),
-    tuple_to_list(common:to_memory(M, State)).
+    common:to_memory(M, State).
 
 object___init__() ->
     ok.
@@ -94,7 +94,8 @@ int___gt__(Memory, Self, Other) ->
 
 int___repr__(Memory, Self) ->
     SelfState = common:read_memory(Memory, Self),
-    orddict:fetch("__value__", SelfState).
+    Val = orddict:fetch("__value__", SelfState),
+    str___new__(Memory, Val).
 
 % --------------
 
@@ -173,7 +174,7 @@ instancemethodBound___new__(Memory, UnboundObj, Self) ->
 methodwrapper___new__(Memory, FuncName, Self) ->
     A = orddict:new(),
     B = orddict:store("__type__", "methodwrapper", A),
-    C = orddict:store("__name__", FuncName, B),
+    C = orddict:store("func_name", FuncName, B),
     State = orddict:store("__self__", Self, C),
     common:to_memory(Memory, State).
 
