@@ -1,10 +1,11 @@
 -module(base).
--export([object___getattribute__/3, object___new__/2, object___init__/0,
-object___call__/3, int___new__/2, int___add__/3, int___gt__/3,
-int___repr__/2, int_attr__doc__/1, function___new__/3,
-function___call__/4,
-function___repr__/2, str___new__/2, str___add__/3, str___repr__/2,
-list___new__/2, list___repr__/2, range/3, class___new__/3]).
+-export([object___getattribute__/3, object___new__/2, object___init__/0, object___call__/3, 
+         int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, int_attr__doc__/1, 
+         function___new__/3, function___call__/4, function___repr__/2, 
+         instancemethod___new__/3,
+         str___new__/2, str___add__/3, str___repr__/2,
+         list___new__/2, list___repr__/2, 
+         range/3, class___new__/4]).
 
 object___getattribute__(M, Obj, Attribute) ->
     Res = common:get_attribute(M, Obj, Attribute),
@@ -189,11 +190,12 @@ wrapperdescriptor___new__(Memory, FuncName) ->
     common:to_memory(Memory, State).
 
 % ----- class -----
-class___new__(Memory, ClassName, ClassContext) ->
+class___new__(Memory, ClassName, ClassContext, BeautyName) ->
     A = orddict:new(),
     B = orddict:store("__type__", "class", A),
     C = orddict:store("class_name", ClassName, B),
-    State = orddict:store("__context__", ClassContext, C),
+    D = orddict:store("beauty_name", BeautyName, C),
+    State = orddict:store("__context__", ClassContext, D),
     common:to_memory(Memory, State).
 
 % ----- list -----

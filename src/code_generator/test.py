@@ -426,26 +426,26 @@ def test19():
     print '-- TEST 19 --'
     print 'output would be...'
 
-    class Pippo(object):
-        a = 2
-        def __call__(self):
-            return 15
-
-    p = Pippo()
-    print p()
+    # class Pippo(object):
+    #     a = 2
+    #     def __call_(self):
+    #         return 15
+    # 
+    # p = Pippo()
+    # print p()
 
     print '------------'
 
     tree = Module([
         Class('Pippo', [
-            Assign('a', Int(31)),
-            Def('__call__', ['self'], [
+            Assign('a', Int(2)),
+            Def('__call_', ['self'], [
                 Return(Int(15)),
             ]),
         ]),
-        Assign('p', Call(Var('Pippo'), [] )),
+        Assign('p', Call(Var('Pippo'), [])),
         # Debug('memory'),
-        Print(Call(Var('p'), [] )),
+        Print(Call(Var('p'), [])),
         # Print(Dot(Var('p'), 'fun1')),
         # Debug('memory'),
     ])
@@ -488,9 +488,34 @@ def test21():
         Assign('a', Int(8)),
         Call(Var('pippofun'), [Var('a')]),
     ])
+    
+def test22():
+    global tree
+    print '-- TEST 22 --'
+    print 'output would be...'
+
+    class Pippo(object):
+        a = 2
+        def __call__(self):
+            return 15
+
+    p = Pippo()
+
+    print '------------'
+
+    tree = Module([
+        Class('Pippo', [
+            Assign('a', Int(2)),
+            Def('__call__', ['self'], [
+                Return(Int(15)),
+            ]),
+        ]),
+        Assign('p', Call(Var('Pippo'), [])),
+        Debug('memory'),
+    ])
 
 def main():
-    test12()
+    test19()
     compose()
 
 if __name__ == '__main__':

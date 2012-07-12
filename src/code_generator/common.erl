@@ -160,17 +160,34 @@ call(M, C, ModuleName, Obj, Args) ->
             % R = base:object___new__(M, Obj),
             % io:format("R: ~p~n", [R]),
         % R;
+        % "instance" ->
+        %     [M1, Ref] = base:object___getattribute__(M, Obj, "__call__"),
+        %     FuncState = common:read_memory(M1, Ref),
+        %     FuncType = orddict:fetch("__type__", FuncState),
+        %     Params = [Ref, Obj | Args],
+        %     if 
+        %         FuncType == "builtin_function" ->
+        %             user_defined_call(M1, C, base, Params);
+        %         true ->
+        %             user_defined_call(M1, C, ModuleName, Params)
+        %     end;
+        
         "instance" ->
-            [M1, Ref] = base:object___getattribute__(M, Obj, "__call__"),
-            FuncState = common:read_memory(M1, Ref),
-            FuncType = orddict:fetch("__type__", FuncState),
-            Params = [Ref, Obj | Args],
+            Res = common:get_attribute(M, Obj, "__call__"),
             if 
-                FuncType == "builtin_function" ->
-                    user_defined_call(M1, C, base, Params);
-                true ->
-                    user_defined_call(M1, C, ModuleName, Params)
+                is_list(Res) ->
+                    ObjState = read_memory(M, Obj),
+                    ClassObj = orddict:fetch("__class__", ObjState),
+                    ClassState = read_memory(M, ClassObj),
+                    ClassName = orddict:fetch("beauty_name", ClassState),
+                    io:format("TypeError: '" ++ ClassName ++ "' object is not callable~n", []),
+                    halt();
+                is_integer(Res) ->
+                    Params = [Res, Obj | Args],
+                    user_defined_call(M, C, ModuleName, Params)
             end;
+            % FuncState = common:read_memory(M1, Ref),
+            % FuncType = orddict:fetch("__type__", FuncState),
                 
         "methodwrapper" ->
             FuncName = orddict:fetch("func_name", ObjState),
@@ -198,7 +215,7 @@ call(M, C, ModuleName, Obj, Args) ->
         %         end;
         % "builtin_function" ->
         %     builtin_call(M, Obj, Args);
-        _ ->
+        "function" ->
             Params = [Obj | Args],
         % io:format("PARAMS: ~p~n", [Params]),
             user_defined_call(M, C, ModuleName, Params)

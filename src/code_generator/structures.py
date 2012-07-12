@@ -468,12 +468,13 @@ class Class:
         
         # creo un oggetto classe passandogli il puntatore al codice, ovvero il nome
         # della classe vera, e il suo contesto
-        # "class___new__(Memory, ClassName, Context)"
+        # "class___new__(Memory, ClassName, Context, BeautyName)"
         # dopodichè assegno l'oggetto alla variabile self.assign_to
         code += [
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('atom', self.name), ('x', 1)]),
-            ('call_ext', [3, ('extfunc', 'base:class___new__/3')]),
+            ('move', [('literal', self.assign_to), ('x', 3)]),
+            ('call_ext', [4, ('extfunc', 'base:class___new__/4')]),
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
             ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
         ]
