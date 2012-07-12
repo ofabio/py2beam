@@ -1,6 +1,6 @@
 -module(common).
 -export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, 
-         print/2, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, call/5]).
+         print/2, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, call/5, is_builtin_or_intance/1]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -219,8 +219,8 @@ print(M, Obj) ->
     if 
         is_list(Res) ->
             % io:format("~p",[Res]),
-            case Res of
-                "str" ->
+            case with_value(Res) of
+                true ->
                     ObjState = common:read_memory(M, Obj),
                     Val = orddict:fetch("__value__", ObjState),
                     io:format("~p~n", [Val])
@@ -228,6 +228,40 @@ print(M, Obj) ->
         % is_integer(Res) ->
         %     user_defined_call(M, C, ModuleName, [Res, Obj])
     end.
+    
+with_value("int") ->
+    true;
+with_value("str") ->
+    true;
+with_value(_) ->
+    false.
+    
+is_builtin_or_intance(A) ->
+    case is_builtin(A) of
+        true ->
+            true;
+        false ->
+            case is_instance(A) of
+                true ->
+                    true;
+                false ->
+                    false
+            end
+    end.
+
+is_builtin("object") ->
+    true;
+is_builtin("int") ->
+    true;
+is_builtin("str") ->
+    true;
+is_builtin(_) ->
+    false.
+
+is_instance("instance") ->
+    true;
+is_instance(_) ->
+    false.
 
 % builtin_call(Memory, Obj, Params) ->
 %     {_, State} = orddict:fetch(Obj, Memory),

@@ -11,6 +11,8 @@ object___getattribute__(M, Obj, Attribute) ->
     {_, State} = orddict:fetch(Obj, M),
     if 
         is_list(Res) ->
+            % methodwrapper o wrapperdescriptor a seconda che l'istanza sia
+            % rispettivamente (instanza, int, str, etc.), oppure (classe, type)
             FakeC_M = erlang:list_to_atom(Res ++ "_attr" ++ Attribute),
             C_M = erlang:list_to_atom(Res ++ "_" ++ Attribute),
             try erlang:apply(base, FakeC_M, [M])
@@ -19,14 +21,15 @@ object___getattribute__(M, Obj, Attribute) ->
                     List = base:module_info(exports),
                     case lists:keymember(C_M, 1, List) of
                         true ->
-                            case orddict:fetch("__type__", State) of
-                                "instance" -> methodwrapper___new__(M, C_M, Obj);
-                                _ -> wrapperdescriptor___new__(M, C_M)
+                            case common:is_builtin_or_intance(orddict:fetch("__type__", State)) of
+                                true -> methodwrapper___new__(M, C_M, Obj);
+                                false -> wrapperdescriptor___new__(M, C_M)
                             end;
                         false -> erlang:error("AttributeError: '" ++ Res ++ "' object has no attribute '" ++ Attribute ++ "'")
                     end
             end;
         is_integer(Res) ->
+            % instance method (bound oppure unbound)
             case orddict:fetch("__type__", State) of
                 "class" -> [M, Res];
                 
@@ -49,7 +52,7 @@ object___call__(_, _, _) ->
 
 int___new__(Memory, N) ->
     A = orddict:new(),
-    B = orddict:store("__type__", "instance", A),
+    B = orddict:store("__type__", "int", A),
     C = orddict:store("__class__", "int", B),
     State = orddict:store("__value__", N, C),
     common:to_memory(Memory, State).
@@ -101,7 +104,7 @@ int___repr__(Memory, Self) ->
 
 str___new__(Memory, N) ->
     A = orddict:new(),
-    B = orddict:store("__type__", "instance", A),
+    B = orddict:store("__type__", "str", A),
     C = orddict:store("__class__", "str", B),
     State = orddict:store("__value__", N, C),
     common:to_memory(Memory, State).

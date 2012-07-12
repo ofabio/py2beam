@@ -135,8 +135,9 @@ class Def:
             ('move', [('x', 0), ('y', heap_memory)]),
         ]
         code += [
-            ('put_list', [('atom', 'None'), ('nil', None), ('x', 0)]),
-            ('put_list', [('y', heap_memory), ('x', 0), ('x', 0)]),
+            ('put_tuple', [2, ('x', 0)]),
+            ('put', [('y', heap_memory)]),
+            ('put', [('atom', 'None')]),
             ('deallocate', [heap_n]),
             ('return', []),
         ]
@@ -148,15 +149,14 @@ class Def:
         # "function___new__(Memory, FuncName, Deep)"
         # dopodichè assegno l'oggetto alla variabile self.name
         if self.is_in_class:
-            func_type = "instance_method"
+            func_type = "instancemethod"
         else:
             func_type = "function"
         code = [
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('atom', self.name), ('x', 1)]),
             ('move', [('integer', len(self.ancestors)), ('x', 2)]),
-            ('move', [('literal', func_type), ('x', 3)]),
-            ('call_ext', [3, ('extfunc', 'base:function___new__aux/4')]),
+            ('call_ext', [3, ('extfunc', 'base:%s___new__/3' % func_type)]),
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
             ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
         ]
@@ -696,8 +696,9 @@ class Return:
             ('move', [('x', 0), ('y', heap_memory)]),
         ]
         code += [
-            ('put_list', [('y', htb(0)), ('nil', None), ('x', 0)]),
-            ('put_list', [('y', heap_memory), ('x', 0), ('x', 0)]),
+            ('put_tuple', [2, ('x', 0)]),
+            ('put', [('y', heap_memory)]),
+            ('put', [('y', htb(0))]),
             ('deallocate', [heap_n]),
             ('return', []),
         ]

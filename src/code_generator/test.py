@@ -262,11 +262,12 @@ def test12():
         Def('pippofun', ['a'], [
             Print(Var('a')),
             Assign('b', Int(7)),
+            # Debug('memory'),
             Return(Var('b')),
         ]),
         Print(Call(Var('pippofun'), [Int(5)])),
-        #Debug('context'),
-        #Debug('memory'),
+        # Call(Var('pippofun'), [Int(5)]),
+        # Debug('context'),
     ])
 
 def test13():
@@ -454,7 +455,6 @@ def test20():
     print '-- TEST 20 --'
     print 'output would be...'
 
-    #print (5).__repr__()
     print (5).__repr__()
 
     print '------------'
@@ -467,9 +467,30 @@ def test20():
     ])
 
 
+def test21():
+    global tree
+    print '-- TEST 21 --'
+    print 'output would be...'
+
+    def pippofun(a):
+        print a
+    
+    a = 8
+    pippofun(a)
+
+    print '------------'
+
+    tree = Module([
+        Def('pippofun', ['a'], [
+            Print(Var('a')),
+        ]),
+        # Debug('memory'),
+        Assign('a', Int(8)),
+        Call(Var('pippofun'), [Var('a')]),
+    ])
 
 def main():
-    test20()
+    test12()
     compose()
 
 if __name__ == '__main__':
