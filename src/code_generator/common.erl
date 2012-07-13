@@ -1,6 +1,6 @@
 -module(common).
 -export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, 
-         print/2, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, call/5, is_builtin_or_intance/1]).
+         print_standard_or_overwrited/2, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, call/5, is_builtin_or_intance/1]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -171,7 +171,7 @@ call(M, C, ModuleName, Obj, Args) ->
     Type = orddict:fetch("__type__", ObjState),
     case Type of
         "class" ->
-            base:object___new__(M, Obj);
+            base:instance___new__(M, Obj);
         
         "instance" ->
             Res = common:get_attribute(M, Obj, "__call__"),
@@ -230,22 +230,32 @@ dot(M, C, ModuleName, Obj, Attribute) ->
             user_defined_call(M2, C, ModuleName, [Res, Obj, Attribute])
     end.
     
-print(M, Obj) ->
-    Res = get_attribute(M, Obj, "__repr__"),
-    if 
-        is_list(Res) ->
-            Print = erlang:apply(base, list_to_atom(Res ++ "___print__"), [M, Obj]),
-            io:format("~p~n", [Print])
-            
-            % case with_value(Res) of
-            %     true ->
-            %         ObjState = common:read_memory(M, Obj),
-            %         Val = orddict:fetch("__value__", ObjState),
-            %         io:format("~p~n", [Val])
-            % end
-        % is_integer(Res) ->
-        %     user_defined_call(M, C, ModuleName, [Res, Obj])
+print_standard_or_overwrited(M, Obj) ->
+    % guarda tra qualche superclasse in cerca di __repr__,
+    % se non lo trova chiama il metodo __print__ del tipo
+    % dell'oggetto che ha fatto la chiamata passando l'oggetto stesso.
+    ObjState = common:read_memory(M, Obj),
+    Type = orddict:fetch("__type__", ObjState),
+    case Type of
+        "instance" ->
+            ClassObj = orddict:fetch("__class__", ObjState),
+            Res = get_attribute(M, ClassObj, "__repr__"),
+            if 
+                is_integer(Res) ->
+                    % chiamare il metodo __repr__ trovato e stampare
+                    % il valore di ritorno
+                    % user_defined_call(M, C, ModuleName, [Res, Obj])
+                    todo;
+                is_list(Res) ->
+                    print_standard(Type, M, Obj)
+            end;
+        _ ->
+            print_standard(Type, M, Obj)
     end.
+    
+print_standard(Type, M, Obj) ->
+    Print = erlang:apply(base, list_to_atom(Type ++ "___print__"), [M, Obj]),
+    io:format(Print ++ "~n", []).
     
 % with_value("int") ->
 %     true;

@@ -77,6 +77,7 @@ class Def:
         Def.n_fun += 1
         self.ancestors = []
         self.is_in_class = False
+        self.beauty_class_name = None
 
     def generate(self):
         self.to_base()
@@ -149,17 +150,26 @@ class Def:
         # "function___new__(Memory, FuncName, Deep)"
         # dopodichè assegno l'oggetto alla variabile self.name
         if self.is_in_class:
-            func_type = "instancemethod"
+            code = [
+                ('move', [('y', heap_memory), ('x', 0)]),
+                ('move', [('atom', self.name), ('x', 1)]),
+                ('move', [('integer', len(self.ancestors)), ('x', 2)]),
+                ('move', [('literal', self.beauty_class_name), ('x', 3)]),
+                ('move', [('literal', self.assign_to), ('x', 4)]),
+                ('call_ext', [5, ('extfunc', 'base:instancemethod___new__/5')]),
+                ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+                ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+            ]
         else:
-            func_type = "function"
-        code = [
-            ('move', [('y', heap_memory), ('x', 0)]),
-            ('move', [('atom', self.name), ('x', 1)]),
-            ('move', [('integer', len(self.ancestors)), ('x', 2)]),
-            ('call_ext', [3, ('extfunc', 'base:%s___new__/3' % func_type)]),
-            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
-        ]
+            code = [
+                ('move', [('y', heap_memory), ('x', 0)]),
+                ('move', [('atom', self.name), ('x', 1)]),
+                ('move', [('integer', len(self.ancestors)), ('x', 2)]),
+                ('move', [('literal', self.assign_to), ('x', 3)]),
+                ('call_ext', [4, ('extfunc', 'base:function___new__/4')]),
+                ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+                ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+            ]
         
         if self.is_in_class:
             context = heap_aux
@@ -437,6 +447,7 @@ class Class:
                 b.output = output
                 b.ancestors = self.ancestors
             b.is_in_class = True
+            b.beauty_class_name = self.assign_to
             code += b.generate()
         
         # code += [
@@ -609,7 +620,7 @@ class Print:
         code += [
             ('move', [('x', 0), ('x', 1)]),
             ('move', [('y', heap_memory), ('x', 0)]),
-            ('call_ext', [4, ('extfunc', 'common:print/2')]),
+            ('call_ext', [4, ('extfunc', 'common:print_standard_or_overwrited/2')]),
         ]
         # se la print dovesse ritornare la memoria ricordarsi di salvarla
         return code

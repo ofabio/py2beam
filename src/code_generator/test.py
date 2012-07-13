@@ -497,6 +497,9 @@ def test22():
             return 6
 
     p = Pippo()
+    print Pippo
+    print p
+    print Pippo.hello
     print p.hello
 
     print '------------'
@@ -508,8 +511,10 @@ def test22():
             ]),
         ]),
         Assign('p', Call(Var('Pippo'), [])),
-        
-        # Dot(Var('p'), 'hello'),
+        Print(Var('Pippo')),
+        Print(Var('p')),
+        Print(Dot(Var('Pippo'), 'hello')),
+        Dot(Var('p'), 'hello'),
         # Debug('memory'),
         Print(Dot(Var('p'), 'hello')),
     ])

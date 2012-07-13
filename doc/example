@@ -35,5 +35,5 @@ HEAP
 (y,6) temporaneo
 (y,7) temporaneo
 
-# (y,1) contiene una lista di dizionari, ciascuno dei quali rappresenta l'insieme delle
-# variabili e delle funzioni definite ad un certo livello di profondità.
+# (y,1) contiene una lista di dizionari, ciascuno dei quali rappresenta 
+# l'insieme delle variabili e delle funzioni definite ad un certo livello di profondità.
