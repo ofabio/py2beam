@@ -514,13 +514,45 @@ def test22():
         Print(Var('Pippo')),
         Print(Var('p')),
         Print(Dot(Var('Pippo'), 'hello')),
-        Dot(Var('p'), 'hello'),
         # Debug('memory'),
         Print(Dot(Var('p'), 'hello')),
     ])
+    
+def test23():
+    global tree
+    print '-- TEST 23 --'
+    print 'output would be...'
+
+    class Pippo(object):
+        def hello(self):
+            return 6
+        def __call__(self):
+            return self
+
+    p = Pippo()
+    print p.hello()
+    print p()
+
+    print '------------'
+
+    tree = Module([
+        Class('Pippo', [
+            Def('hello', ['self'], [
+                Return(Int(6)),
+            ]),
+            Def('__call__', ['self'], [
+                Return(Var('self')),
+            ]),
+        ]),
+        Assign('p', Call(Var('Pippo'), [])),
+        # Debug('memory'),
+        Print(Call(Dot(Var('p'), 'hello'), [])),
+        Print(Call(Var('p'), [])),
+    ])
+
 
 def main():
-    test22()
+    test23()
     compose()
 
 if __name__ == '__main__':

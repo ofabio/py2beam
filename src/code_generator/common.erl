@@ -159,12 +159,22 @@ get_attribute(Memory, Obj, Name) ->
             % get_attribute(Memory, Sup, Name)
     end.
 
-% bind_method(M, FuncRef, InstRef) ->
-%     A = orddict:new(),
-%     B = orddict:store("__type__", "bound_method", A),
-%     C = orddict:store("__func__", FuncRef, B),
-%     State = orddict:store("__inst__", InstRef, C),
-%     common:to_memory(M, State).
+user_defined_call(Memory, Context, ModuleName, Target, P) ->
+    TargetState = common:read_memory(Memory, Target),
+    FuncName = orddict:fetch("func_name", TargetState),
+    Deep = orddict:fetch("deep", TargetState),
+    % calcola il contesto da passare in base alla profondità
+    C = lists:reverse(Context),
+    if 
+        Deep >= 0 ->
+            C2 = lists:sublist(C, Deep);
+        true ->
+            C2 = []
+    end,
+    C3 = lists:reverse(C2),
+    Parameters = [Memory, C3, P],
+    erlang:apply(ModuleName, FuncName, Parameters).
+
 
 call(M, C, ModuleName, Obj, Args) ->
     ObjState = common:read_memory(M, Obj),
@@ -184,8 +194,7 @@ call(M, C, ModuleName, Obj, Args) ->
                     io:format("TypeError: '" ++ ClassName ++ "' object is not callable~n", []),
                     halt();
                 is_integer(Res) ->
-                    Params = [Res, Obj | Args],
-                    user_defined_call(M, C, ModuleName, Params)
+                    user_defined_call(M, C, ModuleName, Res, [Obj | Args])
             end;
                 
         "methodwrapper" ->
@@ -197,27 +206,19 @@ call(M, C, ModuleName, Obj, Args) ->
             
             erlang:apply(base, FuncName, [M, Self | Args]);
             
-        % "bound_method" ->
-        %     FuncRef = orddict:fetch("__func__", ObjState),
-        %     InstRef = orddict:fetch("__inst__", ObjState),
-        %     FuncState = common:read_memory(M, FuncRef),
-        %     FuncType = orddict:fetch("__type__", FuncState),
-        %     if FuncType == "builtin_function" ->
-        %             % user_defined_call(M, C, base, Params);
-        %             Params = [InstRef | Args],
-        %             builtin_call(M, FuncRef, Params);
-        %             % io:format("PARAMS: ~p~n", [R]),
-        %             % R;
-        %     true ->
-        %             Params = [FuncRef, InstRef | Args],
-        %             user_defined_call(M, C, ModuleName, Params)
-        %         end;
-        % "builtin_function" ->
-        %     builtin_call(M, Obj, Args);
+        "instancemethod" ->
+            case orddict:is_key("__self__", ObjState) of
+                true ->
+                    % è bound
+                    Self = orddict:fetch("__self__", ObjState),
+                    user_defined_call(M, C, ModuleName, Obj, [Self | Args]);
+                false ->
+                    % è unbound
+                    user_defined_call(M, C, ModuleName, Obj, Args)
+            end;
+
         "function" ->
-            Params = [Obj | Args],
-        % io:format("PARAMS: ~p~n", [Params]),
-            user_defined_call(M, C, ModuleName, Params)
+            user_defined_call(M, C, ModuleName, Obj, Args)
     end.
 
 dot(M, C, ModuleName, Obj, Attribute) ->
@@ -227,7 +228,7 @@ dot(M, C, ModuleName, Obj, Attribute) ->
             base:object___getattribute__(M, Obj, Attribute);
         is_integer(Res) ->
             {M2, Attribute} = base:str___new__(M, Attribute),
-            user_defined_call(M2, C, ModuleName, [Res, Obj, Attribute])
+            user_defined_call(M2, C, ModuleName, Res, [Obj, Attribute])
     end.
     
 print_standard_or_overwrited(M, Obj) ->
@@ -291,37 +292,6 @@ is_instance("instance") ->
 is_instance(_) ->
     false.
 
-% builtin_call(Memory, Obj, Params) ->
-%     {_, State} = orddict:fetch(Obj, Memory),
-%     FuncName = orddict:fetch("func_name", State),
-%     erlang:apply(base, FuncName, [Memory | Params]).
-
-user_defined_call(Memory, Context, ModuleName, Args) ->
-    [Target | P] = Args,
-    TargetState = common:read_memory(Memory, Target),
-    % io:format("ARGS: ~p~n", [TargetState]),
-    FuncType = orddict:fetch("__type__", TargetState),
-    if FuncType == "bound_method" ->
-            RealTarget = orddict:fetch("__func__", TargetState),
-            TargetState1 = common:read_memory(Memory, RealTarget);
-    true -> TargetState1 = TargetState
-    end,
-    FuncName = orddict:fetch("func_name", TargetState1),
-    Deep = orddict:fetch("deep", TargetState1),
-    % calcola il contesto da passare in base alla profondità
-    C = lists:reverse(Context),
-    if Deep >= 0 ->
-        C2 = lists:sublist(C, Deep);
-    true ->
-    C2 = []
-    end,
-    C3 = lists:reverse(C2),
-    Parameters = [Memory, C3, P],
-    % Parameters = [Memory, C3 | [P]],
-    % io:format("SONO QUI~nPAR: ~p~n", [Parameters]),
-    erlang:apply(ModuleName, FuncName, Parameters).
-    % io:format("FINE: ~p~n", [R]),
-    % R.
 
 test() ->
     io:format("~p~n", ["test"]),

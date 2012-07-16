@@ -118,7 +118,7 @@ int___repr__(Memory, Self) ->
 
 int___print__(Memory, Self) ->
     SelfState = common:read_memory(Memory, Self),
-    orddict:fetch("__value__", SelfState).
+    erlang:integer_to_list(orddict:fetch("__value__", SelfState)).
 
 % ----- str -----
 
