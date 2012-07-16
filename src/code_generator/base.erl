@@ -186,7 +186,8 @@ instancemethod___new__(Memory, FuncName, Deep, BeautyClassName, BeautyMethodName
     B = orddict:store("__type__", "instancemethod", A),
     C = orddict:store("func_name", FuncName, B),
     D = orddict:store("deep", Deep, C),
-    State = orddict:store("beauty_name", BeautyClassName ++ "." ++ BeautyMethodName, D),
+    E = orddict:store("beauty_name", BeautyMethodName, D),
+    State = orddict:store("beauty_class_name", BeautyClassName, E),
     common:to_memory(Memory, State).
 
 instancemethodBound___new__(Memory, UnboundObj, Self) ->
@@ -197,22 +198,24 @@ instancemethodBound___new__(Memory, UnboundObj, Self) ->
     D = orddict:store("func_name", orddict:fetch("func_name", UnboundState), C),
     E = orddict:store("deep", orddict:fetch("deep", UnboundState), D),
     F = orddict:store("beauty_name", orddict:fetch("beauty_name", UnboundState), E),
-    State = orddict:store("beauty_instance_name", instance___print__(Memory, Self), F),
+    G = orddict:store("beauty_class_name", orddict:fetch("beauty_class_name", UnboundState), F),
+    State = orddict:store("beauty_instance_name", instance___print__(Memory, Self), G),
     common:to_memory(Memory, State).
 
 instancemethod___print__(Memory, Self) ->
     % <unbound method Pippo.hello>
     % <bound method Pippo.hello of <__main__.Pippo object at 0x10bcea3d0>>
     SelfState = common:read_memory(Memory, Self),
+    BeautyClassName = orddict:fetch("beauty_class_name", SelfState),
     BeautyName = orddict:fetch("beauty_name", SelfState),
     case orddict:is_key("__self__", SelfState) of
         true ->
             % è bound
             BeautyInstanceName = orddict:fetch("beauty_instance_name", SelfState),
-            "<bound method " ++ BeautyName ++ " of " ++ BeautyInstanceName ++ ">";
+            "<bound method " ++ BeautyClassName ++ "." ++ BeautyName ++ " of " ++ BeautyInstanceName ++ ">";
         false ->
             % è unbound
-            "<unbound method " ++ BeautyName ++ ">"
+            "<unbound method " ++ BeautyClassName ++ "." ++ BeautyName ++ ">"
     end.
     
 

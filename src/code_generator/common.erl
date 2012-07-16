@@ -191,8 +191,7 @@ call(M, C, ModuleName, Obj, Args) ->
                     ClassObj = orddict:fetch("__class__", ObjState),
                     ClassState = read_memory(M, ClassObj),
                     ClassName = orddict:fetch("beauty_name", ClassState),
-                    io:format("TypeError: '" ++ ClassName ++ "' object is not callable~n", []),
-                    halt();
+                    io:format("TypeError: '" ++ ClassName ++ "' object is not callable~n", []), halt();
                 is_integer(Res) ->
                     user_defined_call(M, C, ModuleName, Res, [Obj | Args])
             end;
@@ -200,10 +199,6 @@ call(M, C, ModuleName, Obj, Args) ->
         "methodwrapper" ->
             FuncName = orddict:fetch("func_name", ObjState),
             Self = orddict:fetch("__self__", ObjState),
-            % io:format("FuncName: ~p~n", [FuncName]),
-            % io:format("Self: ~p~n", [Self]),
-            % io:format("Argums: ~p~n", [[M, Self | Args]]),
-            
             erlang:apply(base, FuncName, [M, Self | Args]);
             
         "instancemethod" ->
@@ -214,12 +209,44 @@ call(M, C, ModuleName, Obj, Args) ->
                     user_defined_call(M, C, ModuleName, Obj, [Self | Args]);
                 false ->
                     % è unbound
+                    check_first_arg_is_ok(M, ObjState, Args),
                     user_defined_call(M, C, ModuleName, Obj, Args)
             end;
 
         "function" ->
             user_defined_call(M, C, ModuleName, Obj, Args)
     end.
+
+check_first_arg_is_ok(_, ObjState, []) ->
+    BeautyClassName = orddict:fetch("beauty_class_name", ObjState),
+    BeautyName = orddict:fetch("beauty_name", ObjState),
+    io:format("TypeError: unbound method " ++ BeautyName ++ "() must be called with " ++ BeautyClassName ++ " instance as " ++ 
+                "first argument (got nothing instead)~n", []), halt();
+check_first_arg_is_ok(M, ObjState, Args) ->
+    % solleva l'eccezione se il primo argomento non è un'istanza del tipo previsto.
+    % il primo argomento di args dovrebbe essere un oggetto instanza della classe indicata
+    % dentro il campo class di Obj.
+    % esempio:
+    % TypeError: unbound method hello() must be called with Pippo instance as first argument (got nothing instead)
+    % todo verificare che Args sia vuoto!
+    Class = orddict:fetch("class", ObjState),
+    [InstanceObj, _] = Args,
+    InstanceState = common:read_memory(M, InstanceObj),
+    InstanceClass = orddict:fetch("__class__", InstanceState),
+    
+    if 
+        Class =:= InstanceClass ->
+            ok;
+        true ->
+            BeautyClassName = orddict:fetch("beauty_class_name", ObjState),
+            BeautyName = orddict:fetch("beauty_name", ObjState),
+            ObjInstanceType = "cacca!",
+            io:format("TypeError: unbound method " ++ BeautyName ++ "() must be called with " ++ BeautyClassName ++ " instance as " ++ 
+                        "first argument (got " ++ ObjInstanceType ++ " instance instead)~n", []), halt()
+    end.
+    
+    %% todo: fare anche il controllo dei parametri passati alla funzione deve sollevare un'eccezione anzichè andare in seg fault
+    
 
 dot(M, C, ModuleName, Obj, Attribute) ->
     Res = get_attribute(M, Obj, "__getattribute__"),

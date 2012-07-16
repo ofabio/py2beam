@@ -550,9 +550,34 @@ def test23():
         Print(Call(Var('p'), [])),
     ])
 
+def test24():
+    global tree
+    print '-- TEST 24 --'
+    print 'output would be...'
+
+    class Pippo(object):
+        def hello(self):
+            return 6
+
+    h = Pippo.hello
+    h()
+
+    print '------------'
+
+    tree = Module([
+        Class('Pippo', [
+            Def('hello', ['self'], [
+                Return(Int(6)),
+            ]),
+        ]),
+        Assign('h', Dot(Var('Pippo'), 'hello')),
+        #TypeError: unbound method hello() must be called with Pippo instance as first argument (got nothing instead)
+        # Debug('context'),
+        Call(Var('h'), []),
+    ])
 
 def main():
-    test23()
+    test22()
     compose()
 
 if __name__ == '__main__':
