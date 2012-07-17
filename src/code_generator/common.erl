@@ -1,6 +1,7 @@
 -module(common).
 -export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, 
-         print_standard_or_overwrited/2, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, call/5, is_builtin_or_intance/1]).
+         print_standard_or_overwrited/2, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, 
+         call/5, is_builtin_or_intance/1, links_methods_to_class/2]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -98,9 +99,19 @@ destroy_locals_aux([Key|Rest], Local, Memory) ->
     M2 = decrease_ref(M, Obj),
     destroy_locals_aux(Rest, Local, M2).
 
-read_memory(Memory, Obj) ->
-    {_, State} = orddict:fetch(Obj, Memory),
+read_memory(M, Obj) ->
+    {_, State} = orddict:fetch(Obj, M),
     State.
+    
+write_memory(M, Obj, State) ->
+    {RC, _} = orddict:fetch(Obj, M),
+    orddict:store(Obj, {RC, State}, M).
+    
+add_to_object(M, Obj, Key, Value) ->
+    State = read_memory(M, Obj),
+    NewState = orddict:store(Key, Value, State),
+    write_memory(M, Obj, NewState).
+    
 
 % call_method(Memory, Obj, Method, Params) ->
 %     {_, State} = orddict:fetch(Obj, Memory),
@@ -151,12 +162,6 @@ get_attribute(Memory, Obj, Name) ->
               catch error:_ -> 
                   Type
               end
-                
-            % Sup = try orddict:fetch("__class__", State)
-            %       catch error:_ -> 
-            %           Type
-            %       end,
-            % get_attribute(Memory, Sup, Name)
     end.
 
 user_defined_call(Memory, Context, ModuleName, Target, P) ->
@@ -191,7 +196,7 @@ call(M, C, ModuleName, Obj, Args) ->
                     ClassObj = orddict:fetch("__class__", ObjState),
                     ClassState = read_memory(M, ClassObj),
                     ClassName = orddict:fetch("beauty_name", ClassState),
-                    io:format("TypeError: '" ++ ClassName ++ "' object is not callable~n", []), halt();
+                    throw_except("TypeError: '" ++ ClassName ++ "' object is not callable~n");
                 is_integer(Res) ->
                     user_defined_call(M, C, ModuleName, Res, [Obj | Args])
             end;
@@ -217,35 +222,79 @@ call(M, C, ModuleName, Obj, Args) ->
             user_defined_call(M, C, ModuleName, Obj, Args)
     end.
 
-check_first_arg_is_ok(_, ObjState, []) ->
-    BeautyClassName = orddict:fetch("beauty_class_name", ObjState),
+check_first_arg_is_ok(M, ObjState, []) ->
+    % solleva l'eccezione perchè bisogna passare almeno un'argomento
+    ClassObj = orddict:fetch("class", ObjState),
+    ClassState = common:read_memory(M, ClassObj),
+    BeautyClassName = orddict:fetch("beauty_name", ClassState),
+
     BeautyName = orddict:fetch("beauty_name", ObjState),
-    io:format("TypeError: unbound method " ++ BeautyName ++ "() must be called with " ++ BeautyClassName ++ " instance as " ++ 
-                "first argument (got nothing instead)~n", []), halt();
+    throw_except("TypeError: unbound method " ++ BeautyName ++ "() must be called with " ++ BeautyClassName ++ " instance as " ++ 
+                "first argument (got nothing instead)~n");
 check_first_arg_is_ok(M, ObjState, Args) ->
-    % solleva l'eccezione se il primo argomento non è un'istanza del tipo previsto.
+    % solleva l'eccezione se il tipo del primo argomento non coincide con la classe del metodo unbound.
     % il primo argomento di args dovrebbe essere un oggetto instanza della classe indicata
-    % dentro il campo class di Obj.
-    % esempio:
+    % dentro il campo "class" di Obj.
+    % esempio eccezione:
     % TypeError: unbound method hello() must be called with Pippo instance as first argument (got nothing instead)
-    % todo verificare che Args sia vuoto!
-    Class = orddict:fetch("class", ObjState),
-    [InstanceObj, _] = Args,
+    ClassObj = orddict:fetch("class", ObjState),
+    [InstanceObj | _] = Args,
     InstanceState = common:read_memory(M, InstanceObj),
-    InstanceClass = orddict:fetch("__class__", InstanceState),
+    InstanceClass = try
+        orddict:fetch("__class__", InstanceState)
+    catch
+        error:_ ->
+            error
+    end,
     
     if 
-        Class =:= InstanceClass ->
+        ClassObj =:= InstanceClass ->
             ok;
         true ->
-            BeautyClassName = orddict:fetch("beauty_class_name", ObjState),
-            BeautyName = orddict:fetch("beauty_name", ObjState),
-            ObjInstanceType = "cacca!",
-            io:format("TypeError: unbound method " ++ BeautyName ++ "() must be called with " ++ BeautyClassName ++ " instance as " ++ 
-                        "first argument (got " ++ ObjInstanceType ++ " instance instead)~n", []), halt()
+            first_arg_not_ok(M, ObjState, InstanceState)
     end.
     
+first_arg_not_ok(M, ObjState, InstanceState) ->
+    ClassObj = orddict:fetch("class", ObjState),
+    ClassState = common:read_memory(M, ClassObj),
+    BeautyClassName = orddict:fetch("beauty_name", ClassState),
+    InstanceType = get_beauty_type(M, InstanceState),
+    BeautyName = orddict:fetch("beauty_name", ObjState),
+    throw_except("TypeError: unbound method " ++ BeautyName ++ "() must be called with " ++ BeautyClassName ++ " instance as " ++ 
+                "first argument (got " ++ InstanceType ++ " instance instead)~n").
+    
     %% todo: fare anche il controllo dei parametri passati alla funzione deve sollevare un'eccezione anzichè andare in seg fault
+    
+links_methods_to_class(M, ClassObj) ->
+    ClassState = common:read_memory(M, ClassObj),
+    Context = orddict:fetch("__context__", ClassState),
+    iterate_on_attributes(M, Context, ClassObj).
+    
+iterate_on_attributes(M, [], _) ->
+    M;
+iterate_on_attributes(M, [{_, AttributeObj} | Rest], ClassObj) ->
+    AttributeState = read_memory(M, AttributeObj),
+    M2 = case orddict:fetch("__type__", AttributeState) of
+        "instancemethod" ->
+            add_to_object(M, AttributeObj, "class", ClassObj);
+        _ ->
+            M
+    end,
+        
+    iterate_on_attributes(M2, Rest, ClassObj).
+    
+get_beauty_type(M, State) ->
+    Type = orddict:fetch("__type__", State),
+    case Type of
+        "class" ->
+            "type";
+        "instance" ->
+            ClassObj = orddict:fetch("__class__", State),
+            ClassState = common:read_memory(M, ClassObj),
+            orddict:fetch("beauty_name", ClassState);
+        _ ->
+            Type
+    end.
     
 
 dot(M, C, ModuleName, Obj, Attribute) ->
@@ -285,12 +334,13 @@ print_standard(Type, M, Obj) ->
     Print = erlang:apply(base, list_to_atom(Type ++ "___print__"), [M, Obj]),
     io:format(Print ++ "~n", []).
     
-% with_value("int") ->
-%     true;
-% with_value("str") ->
-%     true;
-% with_value(_) ->
-%     false.
+
+
+throw_except(Msg) ->
+    io:format(Msg, []),
+    erlang:exit(0).
+    % halt().
+                
     
 is_builtin_or_intance(A) ->
     case is_builtin(A) of

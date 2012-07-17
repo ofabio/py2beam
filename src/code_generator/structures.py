@@ -77,7 +77,6 @@ class Def:
         Def.n_fun += 1
         self.ancestors = []
         self.is_in_class = False
-        self.beauty_class_name = None
 
     def generate(self):
         self.to_base()
@@ -154,9 +153,8 @@ class Def:
                 ('move', [('y', heap_memory), ('x', 0)]),
                 ('move', [('atom', self.name), ('x', 1)]),
                 ('move', [('integer', len(self.ancestors)), ('x', 2)]),
-                ('move', [('literal', self.beauty_class_name), ('x', 3)]),
-                ('move', [('literal', self.assign_to), ('x', 4)]),
-                ('call_ext', [5, ('extfunc', 'base:instancemethod___new__/5')]),
+                ('move', [('literal', self.assign_to), ('x', 3)]),
+                ('call_ext', [4, ('extfunc', 'base:instancemethod___new__/4')]),
                 ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
                 ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
             ]
@@ -447,7 +445,6 @@ class Class:
                 b.output = output
                 b.ancestors = self.ancestors
             b.is_in_class = True
-            b.beauty_class_name = self.assign_to
             code += b.generate()
         
         # code += [
@@ -468,6 +465,7 @@ class Class:
         output.append(code)
 
     def inline(self):
+        htb = lambda x: heap_temp_base + x
         module_name = self.module_name
         code = [
             ('move', [('y', heap_memory), ('x', 0)]),
@@ -487,11 +485,12 @@ class Class:
             ('move', [('literal', self.assign_to), ('x', 3)]),
             ('call_ext', [4, ('extfunc', 'base:class___new__/4')]),
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+            ('get_tuple_element', [('x', 0), 1, ('y', htb(0))]),
         ]
         
+        # salva il riferimento all'oggetto classe nel contesto
         code += [
-            ('move', [('x', 0), ('x', 3)]),
+            ('move', [('y', htb(0)), ('x', 3)]),
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('y', heap_context), ('x', 1)]),
             ('move', [('literal', self.assign_to), ('x', 2)]),
@@ -500,6 +499,16 @@ class Class:
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
             ('get_tuple_element', [('x', 0), 1, ('y', heap_context)]),
         ]
+        
+        # inserisci nei metodi della classe il riferimento alla classe
+        code += [
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', htb(0)), ('x', 1)]),
+            ('call_ext', [2, ('extfunc', 'common:links_methods_to_class/2')]),
+            ('move', [('x', 0), ('y', heap_memory)]),
+        ]
+        
+        
         return code
 
 ## just inline code methods ##

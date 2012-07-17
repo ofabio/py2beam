@@ -560,7 +560,8 @@ def test24():
             return 6
 
     h = Pippo.hello
-    h()
+    print h
+    # h(Pippo)
 
     print '------------'
 
@@ -570,14 +571,16 @@ def test24():
                 Return(Int(6)),
             ]),
         ]),
+        Dot(Var('Pippo'), 'hello'),
         Assign('h', Dot(Var('Pippo'), 'hello')),
+        Print(Var('h')),
         #TypeError: unbound method hello() must be called with Pippo instance as first argument (got nothing instead)
-        # Debug('context'),
-        Call(Var('h'), []),
+        # Debug('memory'),
+        Call(Var('h'), [Var('Pippo')]),
     ])
 
 def main():
-    test22()
+    test24()
     compose()
 
 if __name__ == '__main__':

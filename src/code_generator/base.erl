@@ -3,7 +3,7 @@
          instance___new__/2, instance___call__/3, instance___print__/2,
          int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
          function___new__/4, function___call__/4, function___repr__/2, 
-         instancemethod___new__/5, instancemethod___print__/2,
+         instancemethod___new__/4, instancemethod___print__/2,
          str___new__/2, str___add__/3, str___repr__/2, str___print__/2,
          list___new__/2, list___repr__/2, 
          class___new__/4, class___print__/2,
@@ -181,13 +181,12 @@ function___repr__(Memory, Self) ->
     io:format("<bound ~p ~p at ~p>~n", [Type, Fn, Self]).
 
 % ----- instancemethod -----
-instancemethod___new__(Memory, FuncName, Deep, BeautyClassName, BeautyMethodName) ->
+instancemethod___new__(Memory, FuncName, Deep, BeautyName) ->
     A = orddict:new(),
     B = orddict:store("__type__", "instancemethod", A),
     C = orddict:store("func_name", FuncName, B),
     D = orddict:store("deep", Deep, C),
-    E = orddict:store("beauty_name", BeautyMethodName, D),
-    State = orddict:store("beauty_class_name", BeautyClassName, E),
+    State = orddict:store("beauty_name", BeautyName, D),
     common:to_memory(Memory, State).
 
 instancemethodBound___new__(Memory, UnboundObj, Self) ->
@@ -197,8 +196,8 @@ instancemethodBound___new__(Memory, UnboundObj, Self) ->
     C = orddict:store("__self__", Self, B),
     D = orddict:store("func_name", orddict:fetch("func_name", UnboundState), C),
     E = orddict:store("deep", orddict:fetch("deep", UnboundState), D),
-    F = orddict:store("beauty_name", orddict:fetch("beauty_name", UnboundState), E),
-    G = orddict:store("beauty_class_name", orddict:fetch("beauty_class_name", UnboundState), F),
+    F = orddict:store("class", orddict:fetch("class", UnboundState), E),
+    G = orddict:store("beauty_name", orddict:fetch("beauty_name", UnboundState), F),
     State = orddict:store("beauty_instance_name", instance___print__(Memory, Self), G),
     common:to_memory(Memory, State).
 
@@ -206,7 +205,9 @@ instancemethod___print__(Memory, Self) ->
     % <unbound method Pippo.hello>
     % <bound method Pippo.hello of <__main__.Pippo object at 0x10bcea3d0>>
     SelfState = common:read_memory(Memory, Self),
-    BeautyClassName = orddict:fetch("beauty_class_name", SelfState),
+    ClassObj = orddict:fetch("class", SelfState),
+    ClassState = common:read_memory(Memory, ClassObj),
+    BeautyClassName = orddict:fetch("beauty_name", ClassState),
     BeautyName = orddict:fetch("beauty_name", SelfState),
     case orddict:is_key("__self__", SelfState) of
         true ->
