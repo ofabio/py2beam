@@ -1,7 +1,7 @@
 -module(common).
 -export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, 
          print_standard_or_overwrited/2, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, 
-         call/5, is_builtin_or_intance/1, links_methods_to_class/2]).
+         call/5, is_builtin_or_intance/1, links_methods_to_class/2, check_arity/2]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -178,7 +178,33 @@ user_defined_call(Memory, Context, ModuleName, Target, P) ->
     end,
     C3 = lists:reverse(C2),
     Parameters = [Memory, C3, P],
+    
+    check_arity(TargetState, P),
+    
     erlang:apply(ModuleName, FuncName, Parameters).
+    
+check_arity(TargetState, P) ->
+    % fa controllo dei parametri passati alla funzione perchè deve sollevare un'eccezione anzichè andare in seg fault;
+    Arity = orddict:fetch("arity", TargetState),
+    BeautyName = orddict:fetch("beauty_name", TargetState),
+    NParams = length(P),
+    if
+        NParams =:= Arity ->
+            ok;
+        true ->
+            ArityRepr = if
+                Arity =:= 0 ->
+                    % TypeError: hello() takes no arguments (1 given)
+                    "no arguments";
+                Arity =:= 1 ->
+                    % TypeError: hello() takes exactly 1 argument (2 given)
+                    "exactly 1 argument";
+                Arity > 1 ->
+                    % TypeError: hello() takes exactly 2 arguments (1 given)
+                    "exactly " ++ integer_to_list(Arity) ++ " arguments"
+            end,
+            throw_except("TypeError: " ++ BeautyName ++ "() takes " ++ ArityRepr ++ " (" ++ integer_to_list(NParams) ++ " given)~n")
+    end.
 
 
 call(M, C, ModuleName, Obj, Args) ->
@@ -262,8 +288,7 @@ first_arg_not_ok(M, ObjState, InstanceState) ->
     BeautyName = orddict:fetch("beauty_name", ObjState),
     throw_except("TypeError: unbound method " ++ BeautyName ++ "() must be called with " ++ BeautyClassName ++ " instance as " ++ 
                 "first argument (got " ++ InstanceType ++ " instance instead)~n").
-    
-    %% todo: fare anche il controllo dei parametri passati alla funzione deve sollevare un'eccezione anzichè andare in seg fault
+
     
 links_methods_to_class(M, ClassObj) ->
     ClassState = common:read_memory(M, ClassObj),

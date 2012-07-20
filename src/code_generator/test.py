@@ -579,8 +579,27 @@ def test24():
         Call(Var('h'), [Var('Pippo')]),
     ])
 
+def test25():
+    global tree
+    print '-- TEST 25 --'
+    print 'output would be...'
+
+    # def hello(a,b):
+    #     return 5
+    # hello()
+    
+    print '------------'
+
+    tree = Module([
+        Def('hello', [], [
+            Print(Int(7)),
+            Return(Int(5)),
+        ]),
+        Call(Var('hello'), [Int(1)]),
+    ])
+        
 def main():
-    test24()
+    test25()
     compose()
 
 if __name__ == '__main__':

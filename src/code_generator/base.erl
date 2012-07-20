@@ -2,8 +2,8 @@
 -export([object___getattribute__/3, 
          instance___new__/2, instance___call__/3, instance___print__/2,
          int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
-         function___new__/4, function___call__/4, function___repr__/2, 
-         instancemethod___new__/4, instancemethod___print__/2,
+         function___new__/5, function___call__/4, function___repr__/2, 
+         instancemethod___new__/5, instancemethod___print__/2,
          str___new__/2, str___add__/3, str___repr__/2, str___print__/2,
          list___new__/2, list___repr__/2, 
          class___new__/4, class___print__/2,
@@ -153,12 +153,13 @@ str___print__(Memory, Self) ->
 
 % ----- function -----
 
-function___new__(Memory, FuncName,  Deep, BeautyName) ->
+function___new__(Memory, FuncName,  Deep, Arity, BeautyName) ->
     A = orddict:new(),
     B = orddict:store("__type__", "function", A),
     C = orddict:store("func_name", FuncName, B),
     D = orddict:store("deep", Deep, C),
-    State = orddict:store("beauty_name", BeautyName, D),
+    E = orddict:store("arity", Arity, D),
+    State = orddict:store("beauty_name", BeautyName, E),
     common:to_memory(Memory, State).
 
 function___call__(Memory, Context, ModuleName, Args) ->
@@ -181,12 +182,13 @@ function___repr__(Memory, Self) ->
     io:format("<bound ~p ~p at ~p>~n", [Type, Fn, Self]).
 
 % ----- instancemethod -----
-instancemethod___new__(Memory, FuncName, Deep, BeautyName) ->
+instancemethod___new__(Memory, FuncName, Deep, Arity, BeautyName) ->
     A = orddict:new(),
     B = orddict:store("__type__", "instancemethod", A),
     C = orddict:store("func_name", FuncName, B),
     D = orddict:store("deep", Deep, C),
-    State = orddict:store("beauty_name", BeautyName, D),
+    E = orddict:store("arity", Arity, D),
+    State = orddict:store("beauty_name", BeautyName, E),
     common:to_memory(Memory, State).
 
 instancemethodBound___new__(Memory, UnboundObj, Self) ->
@@ -197,8 +199,9 @@ instancemethodBound___new__(Memory, UnboundObj, Self) ->
     D = orddict:store("func_name", orddict:fetch("func_name", UnboundState), C),
     E = orddict:store("deep", orddict:fetch("deep", UnboundState), D),
     F = orddict:store("class", orddict:fetch("class", UnboundState), E),
-    G = orddict:store("beauty_name", orddict:fetch("beauty_name", UnboundState), F),
-    State = orddict:store("beauty_instance_name", instance___print__(Memory, Self), G),
+    G = orddict:store("arity", orddict:fetch("arity", UnboundState), F),
+    H = orddict:store("beauty_name", orddict:fetch("beauty_name", UnboundState), G),
+    State = orddict:store("beauty_instance_name", instance___print__(Memory, Self), H),
     common:to_memory(Memory, State).
 
 instancemethod___print__(Memory, Self) ->

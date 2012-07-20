@@ -153,8 +153,9 @@ class Def:
                 ('move', [('y', heap_memory), ('x', 0)]),
                 ('move', [('atom', self.name), ('x', 1)]),
                 ('move', [('integer', len(self.ancestors)), ('x', 2)]),
-                ('move', [('literal', self.assign_to), ('x', 3)]),
-                ('call_ext', [4, ('extfunc', 'base:instancemethod___new__/4')]),
+                ('move', [('integer', len(self.params)), ('x', 3)]),
+                ('move', [('literal', self.assign_to), ('x', 4)]),
+                ('call_ext', [5, ('extfunc', 'base:instancemethod___new__/5')]),
                 ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
                 ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
             ]
@@ -163,8 +164,9 @@ class Def:
                 ('move', [('y', heap_memory), ('x', 0)]),
                 ('move', [('atom', self.name), ('x', 1)]),
                 ('move', [('integer', len(self.ancestors)), ('x', 2)]),
-                ('move', [('literal', self.assign_to), ('x', 3)]),
-                ('call_ext', [4, ('extfunc', 'base:function___new__/4')]),
+                ('move', [('integer', len(self.params)), ('x', 3)]),
+                ('move', [('literal', self.assign_to), ('x', 4)]),
+                ('call_ext', [5, ('extfunc', 'base:function___new__/5')]),
                 ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
                 ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
             ]
