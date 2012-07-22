@@ -253,7 +253,7 @@ def p_trailer(p):
 def p_testlist(p):
     """testlist : testlist_multi COMMA
                 | testlist_multi """
-    print "testlist:", p[1]
+    # print "testlist:", p[1]
     if len(p) == 2:
         p[0] = p[1]
     else:
@@ -342,20 +342,20 @@ def factorial(n):
     print n
 """
     code = r"""
-a = 4
-def call_go(a):
-    print a
-    #def go(b):
-        #print b
-    #go(b)
-call_go(a)
+a = 'ciao'
+# def call_go(a):
+#     print a
+#     #def go(b):
+#         #print b
+#     #go(b)
+# call_go(a)
 """
     print code
     scanner.input(code)
     while True:
         tok = scanner.token()
         if not tok: break
-        # print tok
+        print tok
     parser = PyParser(lexer=scanner)
     parser.parse(code)
 

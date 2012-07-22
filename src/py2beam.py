@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-from frontend.scanner import PyScanner
-from frontend.parser import PyParser
+from frontend.new_scanner import PyScanner
+from frontend.new_parser import PyParser
 from code_generator.composer import Composer
 
 class Py2Beam(object):
@@ -10,7 +10,7 @@ class Py2Beam(object):
         pass
 
 if __name__ == '__main__':
-    beam_name = "test"
+    beam_name = "prova"
     scanner = PyScanner()
     code = r'''
 def factorial(n):
@@ -32,14 +32,22 @@ call_go()
 print a
 #print 3
 """
+    code = r"""
+class Pippo:
+    print 4
+def fun1():
+    print 12
+fun1()
+"""
     print code
     parser = PyParser(lexer=scanner)
     tree = parser.parse(code)
-    # composer = Composer(beam_name, tree)
     composer = Composer(beam_name, tree)
     composer.generate()
     composer.write()
-
+    from subprocess import call
+    # erl -pa ./ -run prova module -run init stop -noshell
+    # call(["erl", "-pa", "./code_generator", "-run", "prova", "module", "-run", "init", "stop", "-noshell"])
 
 
 

@@ -47,7 +47,7 @@ class Composer:
         be = self.beam_encoder
         if not be:
             raise Exception('Do generate, before!')
-        be.write('%s.beam' % self.module_name)
+        be.write('code_generator/%s.beam' % self.module_name)
         print
         print 'file "%s.beam" generated!' % self.module_name
 
