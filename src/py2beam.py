@@ -1,15 +1,48 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
+import sys
+import getopt
 from frontend.new_scanner import PyScanner
 from frontend.new_parser import PyParser
 from code_generator.composer import Composer
 
-class Py2Beam(object):
-    def __init__(self, lexer = None):
-        pass
+help_message = '''
+The help message goes here.
+'''
 
-if __name__ == '__main__':
+class Usage(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
+    try:
+        try:
+            opts, args = getopt.getopt(argv[1:], "ho:v", ["help", "output="])
+        except getopt.error, msg:
+            raise Usage(msg)
+
+        # option processing
+        for option, value in opts:
+            if option == "-v":
+                verbose = True
+            if option in ("-h", "--help"):
+                raise Usage(help_message)
+            if option in ("-o", "--output"):
+                output = value
+
+    except Usage, err:
+        print >> sys.stderr, sys.argv[0].split("/")[-1] + ": " + str(err.msg)
+        print >> sys.stderr, "\t for help use --help"
+        return 2
+
+
+if __name__ == "__main__":
+    # sys.exit(main())
+    main()
     beam_name = "prova"
     scanner = PyScanner()
     code = r'''
@@ -33,11 +66,15 @@ print a
 #print 3
 """
     code = r"""
+a = 3
+print a
 class Pippo:
-    print 4
-def fun1():
-    print 12
-fun1()
+    a = 5
+    def fun1(self):
+        print 12
+p = Pippo()
+p.fun1()
+print Pippo.a
 """
     print code
     parser = PyParser(lexer=scanner)
@@ -48,8 +85,6 @@ fun1()
     from subprocess import call
     # erl -pa ./ -run prova module -run init stop -noshell
     # call(["erl", "-pa", "./code_generator", "-run", "prova", "module", "-run", "init", "stop", "-noshell"])
-
-
 
 
 

@@ -81,30 +81,54 @@ def p_parameters(p):
     if len(p) == 3:
         p[0] = []
     else:
-        p[0] = [p[2]]
+        print "Parameters:", p[2]
+        p[0] = p[2]
 
 def p_varargslist(p):
     """varargslist : fpdef_assign_test_opt_comma_star MULT NAME
                    | fpdef_assign_test_opt_comma_star MULT NAME COMMA POWER NAME
                    | fpdef_assign_test_opt_comma_star POWER NAME
                    | fpdef assign_test_opt comma_fpdef_assign_test_opt_star comma_opt"""
-    pass
+    if len(p) == 5:
+        if p[2] != []:
+            tmp = Assign(p[1], p[2])
+        else:
+            tmp = p[1]
+        p[0] = [tmp] + p[3]
+    else:
+        raise NotImplementedError
 
 def p_comma_fpdef_assign_test_opt_star(p):
     """comma_fpdef_assign_test_opt_star : COMMA fpdef assign_test_opt comma_fpdef_assign_test_opt_star
                                         | empty"""
-    pass
+    if len(p) == 5:
+        if p[3] != []:
+            tmp = Assign(p[2], p[3])
+        else:
+            tmp = p[2]
+        p[0] = [tmp] + p[4]
+    else:
+        p[0] = p[1]
 
 def p_fpdef_assign_test_opt_comma_star(p):
     """fpdef_assign_test_opt_comma_star : fpdef assign_test_opt COMMA fpdef_assign_test_opt_comma_star
                                         | empty"""
-    pass
+    if len(p) == 5:
+        if p[2] != []:
+            tmp = Assign(p[1], p[2])
+        else:
+            tmp = p[1]
+        p[0] = [tmp] + p[4]
+    else:
+        p[0] = p[1]
 
 def p_assign_test_opt(p):
     """assign_test_opt : ASSIGN test
                        | empty"""
     if len(p) == 3:
         p[0] = p[2]
+    else:
+        p[0] = p[1]
 
 def p_fpdef(p):
     """fpdef : NAME
@@ -150,6 +174,7 @@ def p_semicolon_small_stmt_star(p):
 
 def p_small_stmt(p):
     """small_stmt : expr_stmt
+                  | assign_stmt
                   | print_stmt
                   | del_stmt
                   | pass_stmt
@@ -159,6 +184,10 @@ def p_small_stmt(p):
                   | exec_stmt
                   | assert_stmt"""
     p[0] = p[1]
+
+def p_assign_stmt(p): # FIXME: masking standard assign production
+    """assign_stmt : NAME ASSIGN testlist"""
+    p[0] = Assign(str(p[1]), p[3])
 
 def p_expr_stmt(p):
     """expr_stmt : testlist assign_yield_testlist_or_star"""
@@ -665,6 +694,7 @@ def p_factor(p):
               | MINUS factor
               | NOTBITS factor
               | power"""
+              # | dot_assign"""
     if len(p) == 3:
         raise NotImplementedError
         # p[0] = FactOp(p[1], p[2])
@@ -677,23 +707,76 @@ def p_power(p):
     if p[2] == [] and p[3] == []:
         p[0] = p[1]
     elif p[2] != [] and p[3] == []:
-        if p[2][0] == "dot":
-            p[0] = Dot(p[1], str(p[2][1]))
-        elif p[2][0] == "call":
-            p[0] = Call(p[1], p[2][1])
-        else:
-            raise NotImplementedError
+        # print "Power:", p[2]
+        # p[0] = p[2]
+        prev = "p[1]"
+        for tr in p[2]:
+            prev = "%s(%s, %s)" % (tr[0], prev, tr[1])
+        print "Power:", prev
+        p[0] = eval(prev)
     else:
         raise NotImplementedError
+
+# set attribute
+# def p_dot_assign(p): # FIXME: hiding standard productions
+#     """dot_assign : NAME dot_plus ASSIGN testlist"""
+#     print "Dot assign:", p[2], p[4]
+#     p[0] = Assign(p[2], p[4])
+
+# def p_period_name(p): # FIXME: hiding standard productions
+#     """period_name : PERIOD NAME"""
+#     # p[0] = p[2]
+#     # p[0] = ["Dot", "'%s'" % p[2]]
+#     if isinstance(p[-1], Dot):
+#         print "Dot('%s', '%s')" % (p[-1], p[2])
+#         p[0] = Dot(p[-1], str(p[2]))
+#     else:
+#         print "Dot(Var('%s'), '%s')" % (p[-1], p[2])
+#         p[0] = Dot(Var(str(p[-1])), str(p[2]))
+
+# def p_period_name_plus(p): # FIXME: hiding standard productions
+#     """period_name_plus : NAME PERIOD NAME
+#                         | NAME PERIOD NAME period_name_plus"""
+#     p[0] = ["Dot", "'%s'" % p[2]]
+#     if isinstance(p[-1], Dot):
+#         # print "Dot('%s', '%s')" % (p[-1], p[2])
+#         p[0] = Dot(p[-1], str(p[2]))
+#     else:
+#         # print "Dot(Var('%s'), '%s')" % (p[-1], p[2])
+#         p[0] = Dot(Var(str(p[-1])), str(p[2]))
+
+# def p_dot_plus(p):
+#     """dot_plus : period_name
+#                 | period_name dot_plus"""
+#     if len(p) == 2:
+#         print "GRRR1:", p[1]
+#         p[0] = p[1]
+#     else:
+#         print "GRRR2:", p[1], p[2]
+#         p[0] = p[1]
+    # print "Dot PLUS", p[1]
+    # if len(p) == 2:
+    #     if isinstance(p[-1], Dot) or isinstance(p[-1], Dot2):
+    #         print "Dot2('%s', '%s')" % (p[-1], p[1])
+    #         p[0] = Dot2(p[-1], str(p[1]))
+    #     else:
+    #         print "Dot2(Var('%s'), '%s')" % (p[-1], p[1])
+    #         p[0] = Dot2(Var(str(p[-1])), str(p[1]))
+    # else:
+    #     if isinstance(p[-1], Dot) or isinstance(p[-1], Dot2):
+    #         print "Dot('%s', '%s')" % (p[-1], p[1])
+    #         p[0] = Dot(p[-1], str(p[1]))
+    #     else:
+    #         print "Dot(Var('%s'), '%s')" % (p[-1], p[1])
+    #         p[0] = Dot(Var(str(p[-1])), str(p[1]))
 
 def p_trailer_star(p):
     """trailer_star : trailer trailer_star
                     | empty"""
     if len(p) == 3:
-        if p[2] != []:
-            raise NotImplementedError
-        else:
-            p[0] = p[1]
+        p[0] = [p[1]] + p[2]
+        # print "Trailer star:", p[1], p[2]
+        # p[0] = p[1]
     else:
         p[0] = p[1]
 
@@ -777,10 +860,20 @@ def p_trailer(p):
                | LSQUAREBKT subscriptlist RSQUAREBKT
                | PERIOD NAME"""
     if len(p) == 3:
-        p[0] = ['dot', p[2]]
+        # print "Trailer:", p[2].__class__
+        # if isinstance(p[-1], basestring):
+        #     print "Dot(Var('%s'), '%s')" % (p[-1], p[2])
+        #     p[0] = Dot(Var(str(p[-1])), str(p[2]))
+        # else:
+        #     print "Dot(%s, '%s')" % (p[-1], p[2])
+        #     p[0] = Dot(p[-1], str(p[2]))
+        p[0] = ["Dot", "'%s'" % p[2]]
     else:
         if p[1] == '(':
-            p[0] = ['call', p[2]]
+            # print "Trailer:", p[2]
+            # print "Call(%s, %s)" % (p[-1], p[2])
+            # p[0] = Call(p[-1], p[2])
+            p[0] = ["Call", p[2]]
         else:
             raise NotImplementedError
 
@@ -807,7 +900,7 @@ def p_subscript(p):
 def p_test_opt(p):
     """test_opt : test
                 | empty"""
-    pass
+    p[0] = p[1]
 
 def p_sliceop_opt(p):
     """sliceop_opt : sliceop
@@ -867,12 +960,19 @@ def p_arglist(p):
                | argument_comma_star MULT test comma_argument_star
                | argument_comma_star MULT test comma_argument_star COMMA POWER test
                | argument_comma_star POWER test"""
-    pass
+    if len(p) == 3:
+        print "Arglist:", p[1], p[2]
+        p[0] = p[1] + [p[2]]
+    else:
+        raise NotImplementedError
 
 def p_argument_comma_star(p):
     """argument_comma_star : argument COMMA argument_comma_star
                            | empty"""
-    pass
+    if len(p) == 4:
+        p[0] = [p[1]] + p[3]
+    else:
+        p[0] = p[1]
 
 def p_comma_argument_star(p):
     """comma_argument_star : COMMA argument comma_argument_star
@@ -887,6 +987,8 @@ def p_argument(p):
                 | test ASSIGN test"""
     if len(p) == 4:
         p[0] = Assign(p[1], p[3])
+    elif len(p) == 2:
+        p[0] = p[1]
 
 def p_list_iter(p):
     """list_iter : list_for
@@ -969,14 +1071,14 @@ from new_scanner import PyScanner
 if __name__ == '__main__':
     scanner = PyScanner()
     code = """
-# b = 3
-# class Pippo:
-#     a = 2
-def fun1():
-    print 3
-
-fun1()
-
+a = 3
+print a
+class Pippo:
+    a = 5
+    def fun1(self):
+        print 12
+p = Pippo()
+p.fun1()
 """
     print code
     scanner.input(code)
