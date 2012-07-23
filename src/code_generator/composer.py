@@ -16,7 +16,8 @@ from beam.assembler.beam_encoder import *
 
 
 class Composer:
-    def __init__(self, module_name, tree):
+    def __init__(self, base_path, module_name, tree):
+        self.base_path = base_path
         self.module_name = module_name
         self.tree = tree
         self.beam_encoder = None
@@ -47,7 +48,9 @@ class Composer:
         be = self.beam_encoder
         if not be:
             raise Exception('Do generate, before!')
-        be.write('code_generator/%s.beam' % self.module_name)
+        filename = os.path.join(self.base_path, self.module_name + ".beam")
+        # be.write('code_generator/%s.beam' % self.module_name)
+        be.write(filename)
         print
         print 'file "%s.beam" generated!' % self.module_name
 

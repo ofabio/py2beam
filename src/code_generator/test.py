@@ -11,7 +11,7 @@ from structures import *
 from composer import Composer
 
 def compose():
-    composer = Composer('prova', tree)
+    composer = Composer('.', 'prova', tree)
     composer.generate()
     composer.write()
 
@@ -128,7 +128,7 @@ def test5():
         Print(Call(Var('hello'), []))
     ])
 
-    composer = Composer('fabio', tree)
+    composer = Composer('.', 'fabio', tree)
     composer.generate()
     composer.write()
 
