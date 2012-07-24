@@ -27,6 +27,9 @@ class Module:
         self.module_name = None
         self.body = body
 
+    def __repr__(self):
+        return "%s(%s)" % (str(self.__class__).split(".")[-1] , self.body)
+
     def generate(self):
         module_name = self.module_name
         body = self.body
@@ -77,6 +80,9 @@ class Def:
         Def.n_fun += 1
         self.ancestors = []
         self.is_in_class = False
+
+    def __repr__(self):
+        return "%s(%s, %s, %s)" % (str(self.__class__).split(".")[-1] , self.assign_to, self.params, self.body)
 
     def generate(self):
         self.to_base()
@@ -200,6 +206,9 @@ class For:
         self.body = body
         self.is_in_class = False
     
+    def __repr__(self):
+        return "%s(%s, %s, %s)" % (str(self.__class__).split(".")[-1] , self.item, self.iteration_list, self.body)
+
     def generate(self):
         self.to_base()
         return self.inline()
@@ -322,6 +331,9 @@ class If:
         self.bodies = bodies
         self.is_in_class = False
     
+    def __repr__(self):
+        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.conds, self.bodies)
+
     def generate(self):
         self.to_base()
         return self.inline()
@@ -413,6 +425,10 @@ class Class:
         self.body = body
         self.assign_to = assign_to
         self.is_in_class = False
+        self.super_ = super_
+
+    def __repr__(self):
+        return "%s(%s, %s, %s)" % (str(self.__class__).split(".")[-1] , self.assign_to, self.body, self.super_)
 
     def generate(self):
         self.to_base()
@@ -522,6 +538,9 @@ class Dot:
         self.attribute = attribute
         self.is_in_assign = None
         
+    def __repr__(self):
+        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.obj, self.attribute)
+
     def generate(self):
         code = list()
         code += evaluate(self.module_name, self.obj)
@@ -554,6 +573,9 @@ class Assign:
         self.obj1 = obj1
         self.obj2 = obj2
         self.is_in_class = False
+
+    def __repr__(self):
+        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.obj1, self.obj2)
 
     def generate(self):
         obj1 = self.obj1
@@ -592,6 +614,9 @@ class Int:
         self.value = value
         self.is_in_class = False
         
+    def __repr__(self):
+        return "%s(%s)" % (str(self.__class__).split(".")[-1] , self.value)
+
     def generate(self):
         code = list()
         # chiama int___new__(Memory, N)
@@ -612,6 +637,9 @@ class Str:
         self.value = value
         self.is_in_class = False
         
+    def __repr__(self):
+        return "%s(%s)" % (str(self.__class__).split(".")[-1] , self.value)
+
     def generate(self):
         code = list()
         # chiama str___new__(Memory, N)
@@ -631,6 +659,8 @@ class Var:
         self.name = name
         self.is_in_class = False
         
+    def __repr__(self):
+        return "%s(%s)" % (str(self.__class__).split(".")[-1] , self.name)
 
     def generate(self):
         code = list()
@@ -656,6 +686,9 @@ class Print:
         self.obj = obj
         self.is_in_class = False
 
+    def __repr__(self):
+        return "%s(%s)" % (str(self.__class__).split(".")[-1] , self.obj)
+
     def generate(self):
         code = list()
         obj = self.obj
@@ -676,6 +709,9 @@ class Call:
         self.target = target
         self.params = params
         self.is_in_class = False
+
+    def __repr__(self):
+        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.target, self.params)
 
     def generate(self):
         target = self.target
@@ -710,6 +746,9 @@ class Gt:
         self.obj2 = obj2
         self.is_in_class = False
 
+    def __repr__(self):
+        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.obj1, self.obj2)
+
     def generate(self):
         return call_method(self.module_name, '__gt__', (self.obj1, self.obj2),
             memory_expected=False)
@@ -721,6 +760,9 @@ class Add:
         self.obj2 = obj2
         self.is_in_class = False
 
+    def __repr__(self):
+        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.obj1, self.obj2)
+
     def generate(self):
         return call_method(self.module_name, '__add__', (self.obj1, self.obj2),
             memory_expected=True)
@@ -731,6 +773,9 @@ class Return:
         self.obj = obj
         self.is_in_class = False
         
+    def __repr__(self):
+        return "%s(%s)" % (str(self.__class__).split(".")[-1] , self.obj)
+
     def generate(self):
         htb = lambda x: heap_temp_base + x
         obj = self.obj
@@ -767,6 +812,9 @@ class Range:
         self.obj1 = obj1
         self.obj2 = obj2
         self.is_in_class = False
+
+    def __repr__(self):
+        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.obj1, self.obj1)
 
     def generate(self):
         htb = lambda x: heap_temp_base + x
@@ -823,6 +871,9 @@ class Debug:
         self.module_name = None
         self.what = what
         self.is_in_class = False
+
+    def __repr__(self):
+        return "%s(%s)" % (str(self.__class__).split(".")[-1] , self.what)
 
     def generate(self):
         what = self.what
