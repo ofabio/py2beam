@@ -81,7 +81,6 @@ def p_parameters(p):
     if len(p) == 3:
         p[0] = []
     else:
-        print "Parameters:", p[2]
         p[0] = p[2]
 
 def p_varargslist(p):
@@ -709,11 +708,18 @@ def p_power(p):
     elif p[2] != [] and p[3] == []:
         # print "Power:", p[2]
         # p[0] = p[2]
-        prev = "p[1]"
+        # prev = "p[1]"
+        prev = p[1]
         for tr in p[2]:
-            prev = "%s(%s, %s)" % (tr[0], prev, tr[1])
+            # prev = "%s(%s, %s)" % (tr[0], prev, tr[1])
+            print "inside:", tr[0], prev, tr[1]
+            prev = tr[0](prev, tr[1])
         print "Power:", prev
-        p[0] = eval(prev)
+        try:
+            # p[0] = eval(prev)
+            p[0] = prev
+        except Exception as e:
+            print e
     else:
         raise NotImplementedError
 
@@ -856,9 +862,10 @@ def p_varargslist_opt(p):
     pass
 
 def p_trailer(p):
-    """trailer : LPAREN arglist_opt RPAREN
-               | LSQUAREBKT subscriptlist RSQUAREBKT
-               | PERIOD NAME"""
+    """trailer : LSQUAREBKT subscriptlist RSQUAREBKT
+               | PERIOD NAME
+               | LPAREN power_comma_star RPAREN"""
+               # | LPAREN arglist_opt RPAREN
     if len(p) == 3:
         # print "Trailer:", p[2].__class__
         # if isinstance(p[-1], basestring):
@@ -867,15 +874,30 @@ def p_trailer(p):
         # else:
         #     print "Dot(%s, '%s')" % (p[-1], p[2])
         #     p[0] = Dot(p[-1], str(p[2]))
-        p[0] = ["Dot", "'%s'" % p[2]]
+        # p[0] = ["Dot", "'%s'" % p[2]]
+        p[0] = [Dot, str(p[2])]
     else:
         if p[1] == '(':
-            # print "Trailer:", p[2]
+            print "Trailer:", p[2]
             # print "Call(%s, %s)" % (p[-1], p[2])
             # p[0] = Call(p[-1], p[2])
-            p[0] = ["Call", p[2]]
+            # p[0] = ["Call", p[2]]
+            if not isinstance(p[2], list):
+                p[2] = [p[2]]
+            p[0] = [Call, p[2]]
         else:
             raise NotImplementedError
+
+def p_power_comma_star(p):
+    """power_comma_star : power
+                        | power COMMA power_comma_star
+                        | empty"""
+    if len(p) == 2:
+        p[0] = [p[1]]
+    if len(p) == 4:
+        p[0] = [p[1]] + [p[3]]
+    else:
+        p[0] = p[1]
 
 def p_arglist_opt(p):
     """arglist_opt : arglist
@@ -1071,14 +1093,15 @@ from new_scanner import PyScanner
 if __name__ == '__main__':
     scanner = PyScanner()
     code = """
-a = 3
-print a
+class Pluto:
+    b = 12
 class Pippo:
-    a = 5
-    def fun1(self):
-        print 12
+    a = Pluto
+    def fun1(self, a):
+        print a
 p = Pippo()
-p.fun1()
+b = 3
+p.fun1(Pippo.a.b)
 """
     print code
     scanner.input(code)

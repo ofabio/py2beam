@@ -16,11 +16,12 @@ from beam.assembler.beam_encoder import *
 
 
 class Composer:
-    def __init__(self, base_path, module_name, tree):
+    def __init__(self, base_path, module_name, tree, verbose=False):
         self.base_path = base_path
         self.module_name = module_name
         self.tree = tree
         self.beam_encoder = None
+        self.verbose = verbose
 
     def generate(self):
         self.tree.module_name = self.module_name
@@ -34,9 +35,9 @@ class Composer:
         
         hb = HeaderBuilder(code)
         h = hb.get_header()
-        self.print_header(h)
-        
-        self.print_code(code)
+        if self.verbose:
+            self.print_header(h)
+            self.print_code(code)
         
         h['literals'] = [ExternalTerm(String(l)) for l in h['literals']]
         be = BeamEncoder(h['atoms'], code, h['imports'], h['exports'], h['literals'], h['locals'], 

@@ -26,6 +26,8 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
     execute = False
+    verbose = False
+    output = None
     try:
         try:
             opts, args = getopt.getopt(argv[1:], "eho:v", ["help", "output=", "execute"])
@@ -61,7 +63,7 @@ def main(argv=None):
                 print code
                 parser = PyParser(lexer=scanner)
                 tree = parser.parse(code)
-                composer = Composer(out_path, beam_name, tree)
+                composer = Composer(out_path, beam_name, tree, verbose)
                 composer.generate()
                 composer.write()
                 if execute:

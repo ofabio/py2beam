@@ -55,7 +55,7 @@ class BeamWriter:
         binary = header + atom + code + strT + impT + expT + funT + litT + locT + attr + \
                  cInf + abst + line
         
-        print 'Header:'
+        '''print 'Header:'
         print ByteToHex(header)
         print 'Atom:'
         print ByteToHex(atom)
@@ -80,7 +80,7 @@ class BeamWriter:
         print 'Abst:'
         print ByteToHex(abst)
         print 'Line:'
-        print ByteToHex(line)
+        print ByteToHex(line)'''
         
         self.binary = binary
         
