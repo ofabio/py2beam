@@ -11,11 +11,12 @@ import sys
 import os
 
 heap_n = 7
-heap_temp_base = 4
 heap_memory = 0
 heap_context = 1
-heap_aux = 2
-heap_stack = 3
+heap_class_context = 2
+heap_aux = 3
+heap_stack = 4
+heap_temp_base = 5
 
 def print_register((r, n)):
     return [
@@ -25,7 +26,8 @@ def print_register((r, n)):
         ('call_ext', [2, ('extfunc', 'io:format/2')]),
     ]
     
-def evaluate(module_name, obj):
+def evaluate(module_name, is_in_class, obj):
+    obj.is_in_class = is_in_class
     obj.module_name = module_name
     return obj.generate()
 
@@ -71,7 +73,7 @@ def assign(var, is_in_class=False):
     # eventualmente, decrementando il riferimento all'elemento in memoria già associato 
     # alla variabile
     if is_in_class:
-        context = heap_aux
+        context = heap_class_context
     else:
         context = heap_context
     return [

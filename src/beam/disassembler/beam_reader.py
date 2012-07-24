@@ -14,7 +14,7 @@ import zlib
 
 class BeamReader:
     
-    def __init__(self, beam_file, verbose=False):
+    def __init__(self, beam_file, verbose=True):
         self.verbose = verbose
         fp = open(beam_file, "rb")
         self.beam = fp.read()

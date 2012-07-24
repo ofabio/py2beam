@@ -18,9 +18,10 @@ from beam.assembler.beam_encoder import *
 heap_n = 7
 heap_memory = 0
 heap_context = 1
-heap_aux = 2
-heap_stack = 3
-heap_temp_base = 4
+heap_class_context = 2
+heap_aux = 3
+heap_stack = 4
+heap_temp_base = 5
 
 class Module:
     def __init__(self, body):
@@ -172,7 +173,7 @@ class Def:
             ]
         
         if self.is_in_class:
-            context = heap_aux
+            context = heap_class_context
         else:
             context = heap_context
         code += [
@@ -213,7 +214,7 @@ class For:
         
         code = [
             ('label', ['%s:%d' % (self.name, 0)]),
-            ('func_info', [('atom', module_name), ('atom', self.name), 3]),
+            ('func_info', [('atom', module_name), ('atom', self.name), 4]),
             ('label', []),
             
             ('allocate', [heap_n, 0]),
@@ -223,45 +224,16 @@ class For:
         code += [
             ('move', [('x', 0), ('y', heap_memory)]),
             ('move', [('x', 1), ('y', heap_context)]),
-            
-            #('get_list', [('x', 2), ('x', 0), ('y', heap_aux)]),
-        ]
-        # recupera la lista dal suo puntatore in ('x', 2)
-        code += [
-            # chiama il metodo __repr__ dell'oggetto
-            ('move', [('x', 2), ('x', 1)]),
-            ('move', [('y', heap_memory), ('x', 0)]),
-            ('move', [('literal', '__repr__'), ('x', 2)]),
-            ('move', [('nil', None), ('x', 3)]),
-            ('call_ext', [4, ('extfunc', 'common:call_method/4')]),
+            ('move', [('x', 2), ('y', heap_class_context)]),
+            ('move', [('x', 3), ('x', 0)]),
             # ('x', 0) -> lista su cui fare il for
-            ##
+        ]
+        code += [
             ('is_nonempty_list', [('f', '%s:%d' % (self.name, 1)), ('x', 0)]),
-            # crea un nuovo intero per il primo elemento della lista e una nuova
-            # lista per gli elementi restanti della lista
-            ('get_list', [('x', 0), ('x', 1), ('y', heap_aux)]),
+            ('get_list', [('x', 0), ('x', 0), ('y', heap_aux)]),
         ]
         #code += print_register(('x', 0))
-        
-        code += [
-            # crea un nuovo intero col valore ('x', 0)
-            ('move', [('y', heap_memory), ('x', 0)]),
-            ('call_ext', [2, ('extfunc', 'base:int___new__/2')]),
-            # valore di ritorno {Memory, N}
-            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
-        ]
-        code += assign(item)
-        
-        code += [
-            # crea una nuova lista col valore ('y', heap)
-            ('move', [('y', heap_memory), ('x', 0)]),
-            ('move', [('y', heap_aux), ('x', 1)]),
-            ('call_ext', [2, ('extfunc', 'base:list___new__/2')]),
-            # valore di ritorno {Memory, N}
-            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-            ('get_tuple_element', [('x', 0), 1, ('y', heap_aux)]),
-        ]
+        code += assign(item, self.is_in_class)
 
         for b in body:
             b.module_name = self.module_name
@@ -274,18 +246,20 @@ class For:
         code += [
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('y', heap_context), ('x', 1)]),
-            ('move', [('y', heap_aux), ('x', 2)]),
-            ('call_last', [3, (module_name, self.name + '/3'), heap_n]),
+            ('move', [('y', heap_class_context), ('x', 2)]),
+            ('move', [('y', heap_aux), ('x', 3)]),
+            ('call_last', [4, (module_name, self.name + '/4'), heap_n]),
             ('label', ['%s:%d' % (self.name, 1)]),
             ##exdeall
             ('is_nil', [('f', '%s:%d' % (self.name, 0)), ('x', 0)]),
             # ritorna una tupla: {Memory, Context}
         ]
         code += [
-            ('put_tuple', [2, ('x', 2)]),
+            ('put_tuple', [3, ('x', 3)]),
             ('put', [('y', heap_memory)]),
             ('put', [('y', heap_context)]),
-            ('move', [('x', 2), ('x', 0)]),
+            ('put', [('y', heap_class_context)]),
+            ('move', [('x', 3), ('x', 0)]),
             ('deallocate', [heap_n]),
             ('return', []),
         ]
@@ -294,19 +268,36 @@ class For:
         
     def inline(self):
         module_name = self.module_name
-        # passa al for (context, variabile su cui iterare il for)
-        self.iteration_list.is_in_class = self.is_in_class
+        is_in_class = self.is_in_class
+        # anche gli oggetti dell'iteration list devono eventualmente
+        # poter accadere alle cose definite nella classe
+        self.iteration_list.is_in_class = is_in_class
         code = self.iteration_list.generate()
         #code += print_register(('x', 0))
+        
+        # recupero la vera lista dall'oggetto lista
         code += [
-            ('move', [('x', 0), ('x', 2)]),
+            ('move', [('x', 0), ('x', 1)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('call_ext', [2, ('extfunc', 'base:list_value/2')]),
+        ]
+        # code += print_register(('y', heap_memory))
+        # chiama il for passando (memory, context, class_context(eventualmente vuoto) e
+        # lista di oggetti su cui iterare il for)
+        if is_in_class:
+            code += [('move', [('y', heap_class_context), ('x', 2)])]
+        else:
+            code += [('move', [('atom', 'empty'), ('x', 2)])]
+        code += [
+            ('move', [('x', 0), ('x', 3)]),
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('y', heap_context), ('x', 1)]),
-            ('call', [3, (module_name, '%s/%d' % (self.name, 3))]),
-            #('move', [('x', 0), ('y', heap_context)]),
+            ('call', [4, (module_name, '%s/%d' % (self.name, 4))]),
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
             ('get_tuple_element', [('x', 0), 1, ('y', heap_context)]),
         ]
+        if is_in_class:
+            code += [('get_tuple_element', [('x', 0), 2, ('y', heap_class_context)])]
         return code
 
 
@@ -438,7 +429,7 @@ class Class:
             ('move', [('x', 0), ('y', heap_memory)]),
             ('move', [('x', 1), ('y', heap_context)]),
             ('call_ext', [0, ('extfunc', 'orddict:new/0')]),
-            ('move', [('x', 0), ('y', heap_aux)]),
+            ('move', [('x', 0), ('y', heap_class_context)]),
         ]
         
         for b in body:
@@ -459,7 +450,7 @@ class Class:
         code += [
             ('put_tuple', [2, ('x', 2)]),
             ('put', [('y', heap_memory)]),
-            ('put', [('y', heap_aux)]),
+            ('put', [('y', heap_class_context)]),
             ('move', [('x', 2), ('x', 0)]),
             ('deallocate', [heap_n]),
             ('return', []),
@@ -524,7 +515,7 @@ class Dot:
         
     def generate(self):
         code = list()
-        code += evaluate(self.module_name, self.obj)
+        code += evaluate(self.module_name, self.is_in_class, self.obj)
         # se la dot si trova dentro assign, si ritorna a quest'ultimo obj + il nome
         # dell'attributo, in quanto l'assign dovrà fare un __setattribute__
         if self.is_in_assign:
@@ -561,9 +552,9 @@ class Assign:
         code = list()
         if obj1.__class__ == Dot:
             obj1.is_in_assign = True
-            code += evaluate(self.module_name, obj1)
+            code += evaluate(self.module_name, self.is_in_class, obj1)
             code += to_stack()
-            code += evaluate(self.module_name, obj2)
+            code += evaluate(self.module_name, self.is_in_class, obj2)
             code += to_stack()
             code += from_stack(2)
             # settare sull'oggetto 1, l'attributo "a" a 2:
@@ -581,7 +572,7 @@ class Assign:
             ]
             
         else:
-            code += evaluate(self.module_name, self.obj2)
+            code += evaluate(self.module_name, self.is_in_class, self.obj2)
             code += assign(self.obj1, self.is_in_class)
             # code += print_register(('x', 0))
         return code
@@ -636,7 +627,7 @@ class Var:
         code = list()
         if self.is_in_class:
             code += [
-                ('move', [('y', heap_aux), ('x', 0)]),
+                ('move', [('y', heap_class_context), ('x', 0)]),
                 ('move', [('y', heap_context), ('x', 1)]),
                 ('move', [('literal', self.name), ('x', 2)]),
                 ('call_ext', [3, ('extfunc', 'common:get_from_context/3')]),
@@ -665,7 +656,7 @@ class Print:
         code += [
             ('move', [('x', 0), ('x', 1)]),
             ('move', [('y', heap_memory), ('x', 0)]),
-            ('call_ext', [4, ('extfunc', 'common:print_standard_or_overwrited/2')]),
+            ('call_ext', [2, ('extfunc', 'common:print_standard_or_overwrited/2')]),
         ]
         # se la print dovesse ritornare la memoria ricordarsi di salvarla
         return code
@@ -684,10 +675,10 @@ class Call:
         
         code = list()
         
-        code += evaluate(module_name, target)
+        code += evaluate(module_name, self.is_in_class, target)
         code += to_stack()
         for p in params:
-            code += evaluate(module_name, p)
+            code += evaluate(module_name, self.is_in_class, p)
             code += to_stack()
         
         code += from_stack(len(params) + 1)
@@ -771,9 +762,9 @@ class Range:
     def generate(self):
         htb = lambda x: heap_temp_base + x
         code = list()
-        code += evaluate(self.module_name, self.obj1)
+        code += evaluate(self.module_name, self.is_in_class, self.obj1)
         code += to_stack()
-        code += evaluate(self.module_name, self.obj2)
+        code += evaluate(self.module_name, self.is_in_class, self.obj2)
         code += to_stack()
         
         code += from_stack(2)

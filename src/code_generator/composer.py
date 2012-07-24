@@ -31,7 +31,7 @@ class Composer:
         
         code = self.assign_labels(code)
         
-        #self.print_code(code)
+        self.print_code(code)
         
         hb = HeaderBuilder(code)
         h = hb.get_header()

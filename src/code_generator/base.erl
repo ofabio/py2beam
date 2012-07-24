@@ -5,7 +5,7 @@
          function___new__/5, function___call__/4, function___repr__/2, 
          instancemethod___new__/5, instancemethod___print__/2,
          str___new__/2, str___add__/3, str___repr__/2, str___print__/2,
-         list___new__/2, list___repr__/2, 
+         list___new__/2, list_value/2, 
          class___new__/4, class___print__/2,
          range/3]).
 
@@ -126,7 +126,7 @@ int___gt__(Memory, Self, Other) ->
 int___repr__(Memory, Self) ->
     SelfState = common:read_memory(Memory, Self),
     Val = orddict:fetch("__value__", SelfState),
-    str___new__(Memory, Val).
+    str___new__(Memory, erlang:integer_to_list(Val)).
 
 int___print__(Memory, Self) ->
     SelfState = common:read_memory(Memory, Self),
@@ -271,9 +271,8 @@ class___print__(Memory, Self) ->
 % ----- list -----
 list___new__(Memory, L) ->
     A = orddict:new(),
-    B = orddict:store("__type__", "instance", A),
-    C = orddict:store("__class__", "list", B),
-    State = orddict:store("__value__", L, C),
+    B = orddict:store("__type__", "list", A),
+    State = orddict:store("__value__", L, B),
     common:to_memory(Memory, State).
 
 %list___getitem__(Memory, Self, N) ->
@@ -282,7 +281,7 @@ list___new__(Memory, L) ->
 %list___getslice__(Memory, Self, Low, High) ->
 %   SelfState = common:read_memory(Memory, Self),
 
-list___repr__(Memory, Self) ->
+list_value(Memory, Self) ->
     SelfState = common:read_memory(Memory, Self),
     orddict:fetch("__value__", SelfState).
 
@@ -292,5 +291,13 @@ range(Memory, Low, High) ->
     LowValue = orddict:fetch("__value__", LowState),
     HighState = common:read_memory(Memory, High),
     HighValue = orddict:fetch("__value__", HighState) - 1,
-    R = lists:seq(LowValue, HighValue),
-    list___new__(Memory, R).
+    List = lists:seq(LowValue, HighValue),
+    {M, IntList} = build_ints(Memory, List, []),
+    RIntList = lists:reverse(IntList),
+    list___new__(M, RIntList).
+
+build_ints(M, [], IntList) ->
+    {M, IntList};
+build_ints(M, [I|List], IntList) ->
+    {M2, NewInt} = int___new__(M, I),
+    build_ints(M2, List, [NewInt|IntList]).

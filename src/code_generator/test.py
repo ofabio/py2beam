@@ -48,15 +48,19 @@ def test2():
     global tree
     print '-- TEST 2 --'
     print 'output would be...'
-
-    for i in range(0, 2):
+    
+    i = 1
+    for i in range(i, 3):
         print i
+    print i
     print '------------'
 
     tree = Module([
-        For('i', Range(Int(0), Int(2)), [
+        Assign('i', Int(1)),
+        For('i', Range(Var('i'), Int(3)), [
             Print(Var('i')),
-        ])
+        ]),
+        Print(Var('i')),
     ])
 
 def test3():
@@ -459,6 +463,7 @@ def test20():
 
     tree = Module([
         # Debug('memory'),
+        # Call(Dot(Int(5), '__repr__'), []),
         Print(Call(Dot(Int(5), '__repr__'), [])),
         # Call(Dot(Int(5), '__repr__'), []),
         # Debug('memory'),
@@ -623,9 +628,45 @@ def test26():
         Print(Dot(Var('p'), 'a')),
         # Debug('memory'),
     ])
+    
+def test27():
+    global tree
+    print '-- TEST 27 --'
+    print 'output would be...'
+
+    for i in range(0, 5):
+        print i
+    print '------------'
+
+    tree = Module([
+        Range(Int(0), Int(5)),
+        Debug('memory'),
+    ])
+    
+def test28():
+    global tree
+    print '-- TEST 28 --'
+    print 'output would be...'
+    
+    # i = 1
+    # class Pippo(object):
+    #     for i in range(i, 3):
+    #         print i
+    #     print i
+    print '------------'
+
+    tree = Module([
+        Assign('i', Int(1)),
+        Class('Pippo', [
+            For('i', Range(Var('i'), Int(3)), [
+                Print(Var('i')),
+            ]),
+            Print(Var('i')),
+        ])
+    ])
 
 def main():
-    test26()
+    test28()
     compose()
 
 if __name__ == '__main__':
