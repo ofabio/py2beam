@@ -142,10 +142,10 @@ dict_list_merge(L) ->
 dict_list_merge_aux([], Dict) ->
     Dict;
 dict_list_merge_aux([D|L], Dict) ->
-    A = orddict:merge(fun get_first_of_three/3, D, Dict),
+    A = orddict:merge(fun get_newest_dict/3, D, Dict),
     dict_list_merge_aux(L, A).
 
-get_first_of_three(_, Value1, _) -> Value1.
+get_newest_dict(_, _, Value2) -> Value2.
 
 
 % get_attribute(_, Obj, _) when is_list(Obj) ->

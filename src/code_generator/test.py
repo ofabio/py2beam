@@ -623,7 +623,7 @@ def test26():
         Print(Dot(Var('p'), 'a')),
         # Debug('memory'),
     ])
-            
+
 def main():
     test26()
     compose()
