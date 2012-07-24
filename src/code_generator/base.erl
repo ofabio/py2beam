@@ -1,5 +1,5 @@
 -module(base).
--export([object___getattribute__/3, 
+-export([object___getattribute__/3, object___setattr__/4,
          instance___new__/2, instance___call__/3, instance___print__/2,
          int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
          function___new__/5, function___call__/4, function___repr__/2, 
@@ -32,13 +32,25 @@ object___getattribute__(M, Obj, Attribute) ->
                     end
             end;
         is_integer(Res) ->
-            % instance method (bound oppure unbound)
-            case orddict:fetch("__type__", State) of
-                "class" -> {M, Res};
-                
-                "instance" -> instancemethodBound___new__(M, Res, Obj)
+            % è stato trovato l'attributo definito dall'utente: se non si tratta di una funzione (p.e. intero) oppure se
+            % è una funzione e l'oggetto in cui è stato trovato è una classe, allora ritorna l'oggetto così com'è.
+            % se è una funzione ed è stato trovato in un'istanza allora costruisci e ritorna un oggetto bound.
+            AttributeObj = common:read_memory(M, Res),
+            try orddict:fetch("func_name", AttributeObj),
+                % instance method (bound oppure unbound)
+                case orddict:fetch("__type__", State) of
+                    "class" -> {M, Res};
+                    "instance" -> instancemethodBound___new__(M, Res, Obj)
+                end
+            catch
+                error:_ ->
+                    {M, Res}
             end
     end.
+    
+object___setattr__(M, Obj, Attribute, ObjVal) ->
+    M2 = common:set_object_attribute(M, Obj, Attribute, ObjVal),
+    {M2}.
 
 % ----- instance -----
 

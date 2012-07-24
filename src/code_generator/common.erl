@@ -1,7 +1,8 @@
 -module(common).
 -export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, 
-         print_standard_or_overwrited/2, read_memory/2, destroy_locals/2, dot/5, get_attribute/3, 
-         call/5, is_builtin_or_intance/1, links_methods_to_class/2, check_arity/2]).
+         print_standard_or_overwrited/2, read_memory/2, destroy_locals/2, dot/5, dot2/6,  
+         get_attribute/3, call/5, is_builtin_or_intance/1, links_methods_to_class/2, 
+         check_arity/2, set_object_attribute/4]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -107,10 +108,16 @@ write_memory(M, Obj, State) ->
     {RC, _} = orddict:fetch(Obj, M),
     orddict:store(Obj, {RC, State}, M).
     
-add_to_object(M, Obj, Key, Value) ->
+set_object_property(M, Obj, Key, Value) ->
     State = read_memory(M, Obj),
     NewState = orddict:store(Key, Value, State),
     write_memory(M, Obj, NewState).
+    
+set_object_attribute(M, Obj, Key, Value) ->
+    State = read_memory(M, Obj),
+    Context = orddict:fetch("__context__", State),
+    NewContext = orddict:store(Key, Value, Context),
+    set_object_property(M, Obj, "__context__", NewContext).
     
 
 % call_method(Memory, Obj, Method, Params) ->
@@ -301,7 +308,7 @@ iterate_on_attributes(M, [{_, AttributeObj} | Rest], ClassObj) ->
     AttributeState = read_memory(M, AttributeObj),
     M2 = case orddict:fetch("__type__", AttributeState) of
         "instancemethod" ->
-            add_to_object(M, AttributeObj, "class", ClassObj);
+            set_object_property(M, AttributeObj, "class", ClassObj);
         _ ->
             M
     end,
@@ -323,14 +330,42 @@ get_beauty_type(M, State) ->
     
 
 dot(M, C, ModuleName, Obj, Attribute) ->
-    Res = get_attribute(M, Obj, "__getattribute__"),
-    if 
-        is_list(Res) ->
-            base:object___getattribute__(M, Obj, Attribute);
-        is_integer(Res) ->
-            {M2, Attribute} = base:str___new__(M, Attribute),
-            user_defined_call(M2, C, ModuleName, Res, [Obj, Attribute])
+    ObjState = common:read_memory(M, Obj),
+    Type = orddict:fetch("__type__", ObjState),
+    case Type of
+        "instance" ->
+            ClassObj = orddict:fetch("__class__", ObjState),
+            Res = get_attribute(M, ClassObj, "__getattribute__"),
+            if 
+                is_list(Res) ->
+                    base:object___getattribute__(M, Obj, Attribute);
+                is_integer(Res) ->
+                    {M2, Attribute2} = base:str___new__(M, Attribute),
+                    user_defined_call(M2, C, ModuleName, Res, [Obj, Attribute2])
+            end;
+        _ ->
+            base:object___getattribute__(M, Obj, Attribute)
     end.
+    
+dot2(M, C, ModuleName, Obj, Attribute, ObjVal) ->
+    % io:format("~p ~p ~p ~p ~p ~p ~n", [M, C, ModuleName, Obj, Attribute, ObjVal]),
+    ObjState = common:read_memory(M, Obj),
+    Type = orddict:fetch("__type__", ObjState),
+    case Type of
+        "instance" ->
+            ClassObj = orddict:fetch("__class__", ObjState),
+            Res = get_attribute(M, ClassObj, "__setattr__"),
+            if 
+                is_list(Res) ->
+                    base:object___setattr__(M, Obj, Attribute, ObjVal);
+                is_integer(Res) ->
+                    {M2, Attribute2} = base:str___new__(M, Attribute),
+                    user_defined_call(M2, C, ModuleName, Res, [Obj, Attribute2, ObjVal])
+            end;
+        _ ->
+            base:object___setattr__(M, Obj, Attribute, ObjVal)
+    end.
+    
     
 print_standard_or_overwrited(M, Obj) ->
     % guarda tra qualche superclasse in cerca di __repr__,

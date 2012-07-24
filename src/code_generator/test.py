@@ -597,9 +597,35 @@ def test25():
         ]),
         Call(Var('hello'), [Int(1)]),
     ])
-        
+
+def test26():
+    global tree
+    print '-- TEST 26 --'
+    print 'output would be...'
+
+    class Pippo(object):
+        def __setattr__a(self):
+            return 6
+    p = Pippo()
+    p.a = 5
+    print p.a
+
+    print '------------'
+
+    tree = Module([
+        Class('Pippo', [
+            Def('__setattr__a', ['self', 'a', 'b', 'c'], [
+                Return(Int(6)),
+            ]),
+        ]),
+        Assign('p', Call(Var('Pippo'), [])),
+        Assign(Dot(Var('p'), 'a'), Int(5)),
+        Print(Dot(Var('p'), 'a')),
+        # Debug('memory'),
+    ])
+            
 def main():
-    test25()
+    test26()
     compose()
 
 if __name__ == '__main__':

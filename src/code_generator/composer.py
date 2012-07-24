@@ -208,7 +208,7 @@ class HeaderBuilder:
         return (exp, loc)
         
     def feed_literals(self, literals, instr):
-        if instr[0] in ('move', 'get_list', 'put_list'):
+        if instr[0] in ('move', 'get_list', 'put_list', 'put'):
             params = instr[1]
             for p in params:
                 if type(p) == tuple and p[0] == 'literal':

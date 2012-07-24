@@ -520,36 +520,70 @@ class Dot:
         self.module_name = None
         self.obj = obj
         self.attribute = attribute
+        self.is_in_assign = None
         
     def generate(self):
         code = list()
         code += evaluate(self.module_name, self.obj)
-        code += [
-            ('move', [('x', 0), ('x', 3)]),
-            ('move', [('y', heap_memory), ('x', 0)]),
-            ('move', [('y', heap_context), ('x', 1)]),
-            ('move', [('atom', self.module_name), ('x', 2)]),
-            ('move', [('literal', self.attribute), ('x', 4)]),
-            ('call_ext', [5, ('extfunc', 'common:dot/5')]),
-            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
-        ]
-        #code += print_register(('x', 0))
+        # se la dot si trova dentro assign, si ritorna a quest'ultimo obj + il nome
+        # dell'attributo, in quanto l'assign dovrà fare un __setattribute__
+        if self.is_in_assign:
+            code += [
+                ('move', [('x', 0), ('x', 1)]),
+                ('put_tuple', [2, ('x', 0)]),
+                ('put', [('x', 1)]),
+                ('put', [('literal', self.attribute)]),
+            ]
+        else:
+            code += [
+                ('move', [('x', 0), ('x', 3)]),
+                ('move', [('y', heap_memory), ('x', 0)]),
+                ('move', [('y', heap_context), ('x', 1)]),
+                ('move', [('atom', self.module_name), ('x', 2)]),
+                ('move', [('literal', self.attribute), ('x', 4)]),
+                ('call_ext', [5, ('extfunc', 'common:dot/5')]),
+                ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+                ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+            ]
+        # code += print_register(('x', 0))
         return code
         
 class Assign:
-    def __init__(self, var, obj):
+    def __init__(self, obj1, obj2):
         self.module_name = None
-        self.var = var
-        self.obj = obj
+        self.obj1 = obj1
+        self.obj2 = obj2
         self.is_in_class = False
 
     def generate(self):
+        obj1 = self.obj1
+        obj2 = self.obj2
         code = list()
-        code += evaluate(self.module_name, self.obj)
-        code += assign(self.var, self.is_in_class)
-        #code += print_register(('x', 0))
-        
+        if obj1.__class__ == Dot:
+            obj1.is_in_assign = True
+            code += evaluate(self.module_name, obj1)
+            code += to_stack()
+            code += evaluate(self.module_name, obj2)
+            code += to_stack()
+            code += from_stack(2)
+            # settare sull'oggetto 1, l'attributo "a" a 2:
+            # [{1,"a"},2]
+            code += [
+                ('get_list', [('x', 2), ('x', 0), ('x', 1)]),
+                ('get_tuple_element', [('x', 0), 0, ('x', 3)]),
+                ('get_tuple_element', [('x', 0), 1, ('x', 4)]),
+                ('get_list', [('x', 1), ('x', 5), ('x', 1)]),
+                ('move', [('y', heap_memory), ('x', 0)]),
+                ('move', [('y', heap_context), ('x', 1)]),
+                ('move', [('atom', self.module_name), ('x', 2)]),
+                ('call_ext', [6, ('extfunc', 'common:dot2/6')]),
+                ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ]
+            
+        else:
+            code += evaluate(self.module_name, self.obj2)
+            code += assign(self.obj1, self.is_in_class)
+            # code += print_register(('x', 0))
         return code
         
 class Int:

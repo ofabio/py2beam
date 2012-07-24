@@ -189,6 +189,7 @@ class BeamDecoder:
 
 
 if __name__ == '__main__':
-    beam_decoder = BeamDecoder('recursive.beam')
+    # beam_decoder = BeamDecoder('recursive.beam')
+    beam_decoder = BeamDecoder('../../code_generator/base.beam')
     beam_decoder.decode()
     beam_decoder.print_all()
