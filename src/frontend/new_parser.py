@@ -186,6 +186,7 @@ def p_small_stmt(p):
 
 def p_assign_stmt(p): # FIXME: masking standard assign production
     """assign_stmt : NAME ASSIGN testlist"""
+                   # | power ASSIGN testlist"""
     p[0] = Assign(str(p[1]), p[3])
 
 def p_expr_stmt(p):
@@ -262,7 +263,7 @@ def p_flow_stmt(p):
                  | return_stmt
                  | raise_stmt
                  | yield_stmt"""
-    pass
+    p[0] = p[1]
 
 def p_break_stmt(p):
     """break_stmt : BREAK"""
@@ -275,7 +276,10 @@ def p_continue_stmt(p):
 def p_return_stmt(p):
     """return_stmt : RETURN
                    | RETURN testlist"""
-    pass
+    if len(p) == 2:
+        p[0] = Return()
+    else:
+        p[0] = Return(p[2])
 
 def p_yield_stmt(p):
     """yield_stmt : yield_expr"""
@@ -562,7 +566,8 @@ def p_not_test(p):
 def p_comparison(p):
     """comparison : expr comp_op_expr_star"""
     if p[2] != []:
-        raise NotImplementedError
+        p[0] = p[2]
+        # raise NotImplementedError
         # p[0] = Comp(p[1], p[2]) # Comp(e1, [op, e2])
     else:
         p[0] = p[1]
@@ -571,8 +576,9 @@ def p_comp_op_expr_star(p):
     """comp_op_expr_star : comp_op expr comp_op_expr_star
                          | empty"""
     if len(p) == 4:
-        raise NotImplementedError
-        # p[0] = [p[1], Comp(p[2], p[3])]
+        print "HEY", p[1], p[2]
+        p[0] = [p[1](p[-1], p[2])]
+        # raise NotImplementedError
     else:
         p[0] = p[1]
 
@@ -588,7 +594,10 @@ def p_comp_op(p):
                | IS
                | IS NOT"""
     if len(p) == 2:
-        p[0] = p[1]
+        if p[1] == ">":
+            p[0] = Gt
+        else:
+            raise NotImplementedError
     else:
         p[0] = "%s %s" % (p[1], p[2])
 
@@ -657,7 +666,8 @@ def p_leftshift_rightshift_arith_expr_star(p):
 def p_arith_expr(p):
     """arith_expr : term plus_minus_term_star"""
     if p[2] != []:
-        raise NotImplementedError
+        p[0] = p[2]
+        # raise NotImplementedError
     else:
         p[0] = p[1]
 
@@ -666,7 +676,11 @@ def p_plus_minus_term_star(p):
                             | MINUS term plus_minus_term_star
                             | empty"""
     if len(p) == 4:
-        raise NotImplementedError
+        if p[1] == '+':
+            print "ADD:", p[-1], p[2]
+            p[0] = Add(p[-1], p[2])
+        else:
+            raise NotImplementedError
     else:
         p[0] = p[1]
 
@@ -693,7 +707,6 @@ def p_factor(p):
               | MINUS factor
               | NOTBITS factor
               | power"""
-              # | dot_assign"""
     if len(p) == 3:
         raise NotImplementedError
         # p[0] = FactOp(p[1], p[2])
@@ -712,69 +725,13 @@ def p_power(p):
         prev = p[1]
         for tr in p[2]:
             # prev = "%s(%s, %s)" % (tr[0], prev, tr[1])
-            print "inside:", tr[0], prev, tr[1]
+            # print "inside:", tr[0], prev, tr[1]
             prev = tr[0](prev, tr[1])
-        print "Power:", prev
-        try:
-            # p[0] = eval(prev)
-            p[0] = prev
-        except Exception as e:
-            print e
+        # print "Power:", prev
+        # p[0] = eval(prev)
+        p[0] = prev
     else:
         raise NotImplementedError
-
-# set attribute
-# def p_dot_assign(p): # FIXME: hiding standard productions
-#     """dot_assign : NAME dot_plus ASSIGN testlist"""
-#     print "Dot assign:", p[2], p[4]
-#     p[0] = Assign(p[2], p[4])
-
-# def p_period_name(p): # FIXME: hiding standard productions
-#     """period_name : PERIOD NAME"""
-#     # p[0] = p[2]
-#     # p[0] = ["Dot", "'%s'" % p[2]]
-#     if isinstance(p[-1], Dot):
-#         print "Dot('%s', '%s')" % (p[-1], p[2])
-#         p[0] = Dot(p[-1], str(p[2]))
-#     else:
-#         print "Dot(Var('%s'), '%s')" % (p[-1], p[2])
-#         p[0] = Dot(Var(str(p[-1])), str(p[2]))
-
-# def p_period_name_plus(p): # FIXME: hiding standard productions
-#     """period_name_plus : NAME PERIOD NAME
-#                         | NAME PERIOD NAME period_name_plus"""
-#     p[0] = ["Dot", "'%s'" % p[2]]
-#     if isinstance(p[-1], Dot):
-#         # print "Dot('%s', '%s')" % (p[-1], p[2])
-#         p[0] = Dot(p[-1], str(p[2]))
-#     else:
-#         # print "Dot(Var('%s'), '%s')" % (p[-1], p[2])
-#         p[0] = Dot(Var(str(p[-1])), str(p[2]))
-
-# def p_dot_plus(p):
-#     """dot_plus : period_name
-#                 | period_name dot_plus"""
-#     if len(p) == 2:
-#         print "GRRR1:", p[1]
-#         p[0] = p[1]
-#     else:
-#         print "GRRR2:", p[1], p[2]
-#         p[0] = p[1]
-    # print "Dot PLUS", p[1]
-    # if len(p) == 2:
-    #     if isinstance(p[-1], Dot) or isinstance(p[-1], Dot2):
-    #         print "Dot2('%s', '%s')" % (p[-1], p[1])
-    #         p[0] = Dot2(p[-1], str(p[1]))
-    #     else:
-    #         print "Dot2(Var('%s'), '%s')" % (p[-1], p[1])
-    #         p[0] = Dot2(Var(str(p[-1])), str(p[1]))
-    # else:
-    #     if isinstance(p[-1], Dot) or isinstance(p[-1], Dot2):
-    #         print "Dot('%s', '%s')" % (p[-1], p[1])
-    #         p[0] = Dot(p[-1], str(p[1]))
-    #     else:
-    #         print "Dot(Var('%s'), '%s')" % (p[-1], p[1])
-    #         p[0] = Dot(Var(str(p[-1])), str(p[1]))
 
 def p_trailer_star(p):
     """trailer_star : trailer trailer_star
@@ -810,25 +767,32 @@ def p_atom(p):
         if isinstance(p[1], int):
             p[0] = Int(p[1])
         elif isinstance(p[1], float):
-            p[0] = Float(p[1])
+            raise NotImplementedError
+            # p[0] = Float(p[1])
         elif isinstance(p[1], complex):
-            p[0] = Complex(p[1])
+            raise NotImplementedError
+            # p[0] = Complex(p[1])
         elif isinstance(p[1], basestring):
             p[0] = Str(p[1])
     elif len(p) == 3:
         if p[1] == "(":
-            p[0] = Tuple()
+            raise NotImplementedError
+            # p[0] = Tuple()
         elif p[1] == "[":
-            p[0] = List()
+            raise NotImplementedError
+            # p[0] = List()
         elif p[1] == "{":
-            p[0] = Dict()
+            raise NotImplementedError
+            # p[0] = Dict()
     else:
-        if p[1] == "(":
-            p[0] = Tuple(p[2])
+        if p[1] == "(": # FIXME: use Tuple class instead
+            p[0] = p[2]
         elif p[1] == "[":
-            p[0] = List(p[2])
+            raise NotImplementedError
+            # p[0] = List(p[2])
         elif p[1] == "{":
-            p[0] = Dict(p[2])
+            raise NotImplementedError
+            # p[0] = Dict(p[2])
 
 def p_atom_name(p):
     """atom : NAME"""
@@ -850,6 +814,13 @@ def p_listmaker(p):
 def p_testlist_comp(p):
     """testlist_comp : test comp_for
                      | test comma_test_star comma_opt"""
+    if len(p) == 3:
+        raise NotImplementedError
+    else:
+        if p[2] != []:
+            p[0] = [p[1]] + p[2]
+        else:
+            p[0] = p[1]
 
 
 def p_lambdef(p):
@@ -878,7 +849,7 @@ def p_trailer(p):
         p[0] = [Dot, str(p[2])]
     else:
         if p[1] == '(':
-            print "Trailer:", p[2]
+            # print "Trailer:", p[2]
             # print "Call(%s, %s)" % (p[-1], p[2])
             # p[0] = Call(p[-1], p[2])
             # p[0] = ["Call", p[2]]
@@ -973,8 +944,10 @@ def p_classdef(p):
                 | CLASS NAME LPAREN testlist RPAREN COLON suite"""
     if len(p) == 5:
         p[0] = Class(str(p[2]), p[4])
+    elif len(p) == 7:
+        p[0] = Class(str(p[2]), p[6])
     else:
-        raise NotImplementedError
+        p[0] = Class(str(p[2]), p[7], p[4])
 
 def p_arglist(p):
     """arglist : argument_comma_star argument
@@ -1093,22 +1066,14 @@ from new_scanner import PyScanner
 if __name__ == '__main__':
     scanner = PyScanner()
     code = """
-class Pluto:
-    b = 12
-class Pippo:
-    a = Pluto
-    def fun1(self, a):
-        print a
-p = Pippo()
-b = 3
-p.fun1(Pippo.a.b)
+print (5).__repr__()
 """
     print code
     scanner.input(code)
     while True:
         tok = scanner.token()
         if not tok: break
-        print tok
+        # print tok
     parser = PyParser(lexer=scanner)
     parser.parse(code)
 

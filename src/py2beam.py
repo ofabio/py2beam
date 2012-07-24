@@ -67,11 +67,11 @@ def main(argv=None):
                 composer.generate()
                 composer.write()
                 if execute:
-                    print 78 * "#"
-                    print "NOW EXECUTING"
-                    print 78 * "#"
+                    print 79 * "#"
+                    print 33*" " + "NOW EXECUTING"
+                    print 79 * "#"
                     call(["erl", "-pa", out_path, "-run", beam_name, "module", "-run", "init", "stop", "-noshell"])
-                    print 78 * "#"
+                    print 79 * "#"
     except Usage, err:
         # print >> sys.stderr, sys.argv[0].split("/")[-1] + ": " + str(err.msg)
         print >> sys.stderr, str(err.msg)
