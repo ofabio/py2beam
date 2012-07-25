@@ -728,9 +728,22 @@ def test31():
             Print(Var('i')),
         ]),
     ])
+    
+def test32():
+    global tree
+    print '-- TEST 32 --'
+    print 'output would be...'
+
+    print (((3 + 7) / 2) * 5)
+
+    print '------------'
+
+    tree = Module([
+        Print(Mul(Div(Add(Int(3),Int(7)), Int(2)), Int(5))),
+    ])
         
 def main():
-    test31()
+    test32()
     compose()
 
 if __name__ == '__main__':

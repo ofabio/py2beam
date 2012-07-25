@@ -2,7 +2,7 @@
 -export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, 
          print_standard_or_overwrited/2, read_memory/2, destroy_locals/2, dot/5, dot2/6,  
          get_attribute/3, call/5, is_builtin_or_intance/1, links_methods_to_class/2, 
-         check_arity/2, set_object_attribute/4, gt/5]).
+         check_arity/2, set_object_attribute/4, call_keyword/6]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -151,7 +151,7 @@ get_newest_dict(_, _, Value2) -> Value2.
 % get_attribute(_, Obj, _) when is_list(Obj) ->
 %     Obj;
 get_attribute(Memory, Obj, Name) ->
-    {_, State} = orddict:fetch(Obj, Memory),
+    State = read_memory(Memory, Obj),
     % io:format("Obj:~p~nMemory:~p~n", [Obj, Memory]),
     try orddict:fetch(Name, orddict:fetch("__context__", State))
     catch
@@ -164,7 +164,7 @@ get_attribute(Memory, Obj, Name) ->
                 Sup = orddict:fetch("__class__", State),
                 if 
                     is_list(Sup) -> Type;
-                    true -> get_attribute(Memory, Sup, Name)
+                    is_integer(Sup) -> get_attribute(Memory, Sup, Name)
                 end
               catch error:_ -> 
                   Type
@@ -368,23 +368,36 @@ dot2(M, C, ModuleName, Obj, Attribute, ObjVal) ->
         _ ->
             base:object___setattr__(M, Obj, Attribute, ObjVal)
     end.
+
+get_primitive_type(Memory, Obj) ->
+    State = read_memory(Memory, Obj),
+    Type = orddict:fetch("__type__", State),
+    try
+        Sup = orddict:fetch("__class__", State),
+        if 
+            is_list(Sup) -> Type;
+            is_integer(Sup) -> get_primitive_type(Memory, Sup)
+        end
+    catch error:_ -> 
+        Type
+    end.
     
-gt(M, C, ModuleName, Obj, Other) ->
+call_keyword(M, C, ModuleName, Keyword, Obj, Args) ->
     ObjState = common:read_memory(M, Obj),
     Type = orddict:fetch("__type__", ObjState),
     case Type of
         "instance" ->
             ClassObj = orddict:fetch("__class__", ObjState),
-            Res = get_attribute(M, ClassObj, "__gt__"),
+            Res = get_attribute(M, ClassObj, Keyword),
             if 
                 is_list(Res) ->
-                    erlang:apply(base, erlang:list_to_atom(Res ++ "___gt__"), [Obj, Other]);
+                    erlang:apply(base, erlang:list_to_atom(Res ++ "_" ++ Keyword), [M, Obj | Args]);
                 is_integer(Res) ->
-                    user_defined_call(M, C, ModuleName, Res, [M, Obj, Other])
+                    user_defined_call(M, C, ModuleName, Res, [M, Obj | Args])
             end;
         _ ->
-            Res = get_attribute(M, Obj, "__gt__"),
-            erlang:apply(base, erlang:list_to_atom(Res ++ "___gt__"), [M, Obj, Other])
+            Res = get_primitive_type(M, Obj),
+            erlang:apply(base, erlang:list_to_atom(Res ++ "_" ++ Keyword), [M, Obj | Args])
     end.
     
 print_standard_or_overwrited(M, Obj) ->

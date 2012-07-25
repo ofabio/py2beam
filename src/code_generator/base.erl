@@ -2,7 +2,8 @@
 -export([object___getattribute__/3, object___setattr__/4,
          instance___new__/2, instance___call__/3, instance___print__/2,
          bool___new__/2, bool___print__/2, bool_obj_list_to_value_list/2,
-         int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
+         int___new__/2, int___add__/3, int___sub__/3, int___mul__/3, int___div__/3, 
+         int___gt__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
          function___new__/5, function___call__/4, function___repr__/2, 
          instancemethod___new__/5, instancemethod___print__/2,
          builtin_function_or_method___new__/2, builtin_function_or_method___print__/2,
@@ -105,6 +106,18 @@ int___new__(Memory, N) ->
     common:to_memory(Memory, State).
 
 int___add__(Memory, Self, Other) ->
+    int_binary_op(Memory, Self, Other, "+", fun(A, B) -> A + B end).
+    
+int___sub__(Memory, Self, Other) ->
+    int_binary_op(Memory, Self, Other, "-", fun(A, B) -> erlang:abs(A - B) end).
+    
+int___mul__(Memory, Self, Other) ->
+    int_binary_op(Memory, Self, Other, "*", fun(A, B) -> A * B end).
+    
+int___div__(Memory, Self, Other) ->
+    int_binary_op(Memory, Self, Other, "/", fun(A, B) -> A div B end).
+
+int_binary_op(Memory, Self, Other, Op, LambdaOp) ->
     SelfState = common:read_memory(Memory, Self),
     OtherState = common:read_memory(Memory, Other),
     TypeOther = orddict:fetch("__type__", OtherState),
@@ -112,9 +125,9 @@ int___add__(Memory, Self, Other) ->
         "int" ->
             A = orddict:fetch("__value__", SelfState),
             B = orddict:fetch("__value__", OtherState),
-            int___new__(Memory, A + B);
+            int___new__(Memory, LambdaOp(A, B));
         _ ->
-            erlang:error("TypeError: unsupported operand type(s) for +: 'int' and '" ++
+            erlang:error("TypeError: unsupported operand type(s) for " ++ Op ++ ": 'int' and '" ++
                 TypeOther ++ "'")
     end.
 

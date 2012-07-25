@@ -44,30 +44,6 @@ def from_stack(n):
         ]
     return code
     
-def call_method(module_name, method, params, memory_expected):
-    code = list()
-    code += evaluate(module_name, params[0])
-    code += to_stack()
-    code += evaluate(module_name, params[1])
-    code += to_stack()
-
-    code += from_stack(2)
-    
-    # chiama il metodo method dell'oggetto
-    # call_method(Memory, Obj, Method, Params)
-    code += [
-        ('get_list', [('x', 2), ('x', 1), ('x', 3)]),
-        ('move', [('y', heap_memory), ('x', 0)]),
-        ('move', [('literal', method), ('x', 2)]),
-        ('call_ext', [4, ('extfunc', 'common:call_method/4')]),
-    ]
-    if memory_expected:
-        code += [
-            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
-        ]
-    return code
-    
 def assign(var, is_in_class=False):
     # assegna un oggetto alla variabile "var" aumentando il riferimento in memoria e,
     # eventualmente, decrementando il riferimento all'elemento in memoria già associato 

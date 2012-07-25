@@ -763,7 +763,8 @@ class Call:
         ]
         return code
 
-class Gt:
+
+class KeywordOperator(object):
     def __init__(self, obj1, obj2):
         self.module_name = None
         self.obj1 = obj1
@@ -784,33 +785,44 @@ class Gt:
         code += to_stack()
         code += from_stack(2)
         
-        # gt(M, C, ModuleName, Obj, Other)
+        # call_keyword(M, C, ModuleName, Keyword, Obj, [Other])
         code += [
-            ('get_list', [('x', 2), ('x', 3), ('x', 0)]),
-            ('get_list', [('x', 0), ('x', 4), ('x', 0)]),
+            ('get_list', [('x', 2), ('x', 4), ('x', 5)]),
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('y', heap_context), ('x', 1)]),
             ('move', [('atom', module_name), ('x', 2)]),
-            ('call_ext', [5, ('extfunc', 'common:gt/5')]),
+            ('move', [('literal', self.keyword), ('x', 3)]),
+            ('call_ext', [6, ('extfunc', 'common:call_keyword/6')]),
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
             ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
         ]
         return code
         
-class Add:
+class Gt(KeywordOperator):
     def __init__(self, obj1, obj2):
-        self.module_name = None
-        self.obj1 = obj1
-        self.obj2 = obj2
-        self.is_in_class = False
-
-    def __repr__(self):
-        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.obj1, self.obj2)
-
-    def generate(self):
-        return call_method(self.module_name, '__add__', (self.obj1, self.obj2),
-            memory_expected=True)
+        super(Gt, self).__init__(obj1, obj2)
+        self.keyword = "__gt__"
         
+class Add(KeywordOperator):
+    def __init__(self, obj1, obj2):
+        super(Add, self).__init__(obj1, obj2)
+        self.keyword = "__add__"
+        
+class Sub(KeywordOperator):
+    def __init__(self, obj1, obj2):
+        super(Sub, self).__init__(obj1, obj2)
+        self.keyword = "__sub__"
+        
+class Mul(KeywordOperator):
+    def __init__(self, obj1, obj2):
+        super(Mul, self).__init__(obj1, obj2)
+        self.keyword = "__mul__"
+                
+class Div(KeywordOperator):
+    def __init__(self, obj1, obj2):
+        super(Div, self).__init__(obj1, obj2)
+        self.keyword = "__div__"
+                
 class Return:
     def __init__(self, obj=None):
         self.module_name = None
@@ -848,66 +860,6 @@ class Return:
             ('deallocate', [heap_n]),
             ('return', []),
         ]
-        return code
-
-class Range:
-    def __init__(self, obj1, obj2):
-        self.module_name = None
-        self.obj1 = obj1
-        self.obj2 = obj2
-        self.is_in_class = False
-
-    def __repr__(self):
-        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.obj1, self.obj1)
-
-    def generate(self):
-        htb = lambda x: heap_temp_base + x
-        code = list()
-        code += evaluate(self.module_name, self.is_in_class, self.obj1)
-        code += to_stack()
-        code += evaluate(self.module_name, self.is_in_class, self.obj2)
-        code += to_stack()
-        
-        code += from_stack(2)
-        
-        # code += [
-        #     ('get_list', [('x', 2), ('y', htb(0)), ('x', 2)]),
-        #     ('get_list', [('x', 2), ('y', htb(1)), ('x', 2)]),
-        # ]
-        
-        code += [
-            ('get_list', [('x', 2), ('x', 1), ('x', 2)]),
-            ('get_list', [('x', 2), ('x', 2), ('x', 0)]),
-            ('move', [('y', heap_memory), ('x', 0)]),
-            ('call_ext', [3, ('extfunc', 'base:range/3')]),
-            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
-        ]
-        
-        # # sostituisce ai puntatori i veri valori
-        # for i in range(2):
-        #     code += [
-        #         # chiama il metodo __repr__ dell'oggetto
-        #         ('move', [('y', htb(i)), ('x', 1)]),
-        #         ('move', [('y', heap_memory), ('x', 0)]),
-        #         ('move', [('literal', '__repr__'), ('x', 2)]),
-        #         ('move', [('nil', None), ('x', 3)]),
-        #         ('call_ext', [4, ('extfunc', 'common:call_method/4')]),
-        #         ('move', [('x', 0), ('y', htb(i))]),
-        #     ]
-        # 
-        # # sottrae 1 all'estremo destro
-        # code += [
-        #     ('gc_bif2', [('f', 0), 1, ('extfunc', 'erlang:-/2'), 
-        #         ('y', htb(1)), ('integer', 1), ('y', htb(1))]),
-        # ]
-        # 
-        # code += [
-        #     ('move', [('y', htb(0)), ('x', 0)]),
-        #     ('move', [('y', htb(1)), ('x', 1)]),
-        #     ('call_ext', [3, ('extfunc', 'lists:seq/2')]),        
-        # ]
-
         return code
 
 class Debug:
