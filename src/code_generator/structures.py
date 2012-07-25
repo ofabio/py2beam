@@ -278,6 +278,7 @@ class For:
     def inline(self):
         module_name = self.module_name
         is_in_class = self.is_in_class
+        self.iteration_list.module_name = module_name
         # anche gli oggetti dell'iteration list devono eventualmente
         # poter accadere alle cose definite nella classe
         self.iteration_list.is_in_class = is_in_class
@@ -663,6 +664,8 @@ class Str:
         return code
 
 class Var:
+    builtins = ["range"]
+    
     def __init__(self, name):
         self.module_name = None
         self.name = name
@@ -673,6 +676,18 @@ class Var:
 
     def generate(self):
         code = list()
+        # caso builtin
+        if self.name in Var.builtins:
+            code += [
+                ('move', [('y', heap_memory), ('x', 0)]),
+                ('move', [('literal', self.name), ('x', 1)]),
+                ('call_ext', [2, ('extfunc', 'base:builtin_function_or_method___new__/2')]),
+                # valore di ritorno {Memory, N}
+                ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+                ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+            ]
+            return code
+        
         if self.is_in_class:
             code += [
                 ('move', [('y', heap_class_context), ('x', 0)]),

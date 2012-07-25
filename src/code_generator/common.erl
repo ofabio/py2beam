@@ -251,7 +251,11 @@ call(M, C, ModuleName, Obj, Args) ->
             end;
 
         "function" ->
-            user_defined_call(M, C, ModuleName, Obj, Args)
+            user_defined_call(M, C, ModuleName, Obj, Args);
+            
+        "builtin_function_or_method" ->
+            Name = orddict:fetch("__value__", ObjState),
+            erlang:apply(builtins, erlang:list_to_atom(Name), [M | Args])
     end.
 
 check_first_arg_is_ok(M, ObjState, []) ->

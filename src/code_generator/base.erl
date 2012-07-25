@@ -5,10 +5,10 @@
          int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
          function___new__/5, function___call__/4, function___repr__/2, 
          instancemethod___new__/5, instancemethod___print__/2,
+         builtin_function_or_method___new__/2, builtin_function_or_method___print__/2,
          str___new__/2, str___add__/3, str___repr__/2, str___print__/2,
-         list___new__/2, list_value/2, 
-         class___new__/4, class___print__/2,
-         range/3]).
+         list___new__/2, list_value/2, list___print__/2,
+         class___new__/4, class___print__/2]).
 
 object___getattribute__(M, Obj, Attribute) ->
     Res = common:get_attribute(M, Obj, Attribute),
@@ -304,19 +304,23 @@ list_value(Memory, Self) ->
     SelfState = common:read_memory(Memory, Self),
     orddict:fetch("__value__", SelfState).
 
-% ----- builtins -----
-range(Memory, Low, High) ->
-    LowState = common:read_memory(Memory, Low),
-    LowValue = orddict:fetch("__value__", LowState),
-    HighState = common:read_memory(Memory, High),
-    HighValue = orddict:fetch("__value__", HighState) - 1,
-    List = lists:seq(LowValue, HighValue),
-    {M, IntList} = build_ints(Memory, List, []),
-    RIntList = lists:reverse(IntList),
-    list___new__(M, RIntList).
+% list___print__(Memory, Self) ->
+%     SelfState = common:read_memory(Memory, Self),
+%     ObjList = orddict:fetch("__value__", SelfState),
+%     A = [common:print_standard_or_overwrited(Memory, Obj) || Obj <- ObjList],
+%     io:format("~p~n", [A]).
 
-build_ints(M, [], IntList) ->
-    {M, IntList};
-build_ints(M, [I|List], IntList) ->
-    {M2, NewInt} = int___new__(M, I),
-    build_ints(M2, List, [NewInt|IntList]).
+list___print__(_, _) ->
+    "list".
+
+% ----- builtin_function_or_method -----
+builtin_function_or_method___new__(Memory, Name) ->
+    A = orddict:new(),
+    B = orddict:store("__type__", "builtin_function_or_method", A),
+    State = orddict:store("__value__", Name, B),
+    common:to_memory(Memory, State).
+    
+builtin_function_or_method___print__(Memory, Self) ->
+    SelfState = common:read_memory(Memory, Self),
+    Name = orddict:fetch("__value__", SelfState),
+    "<built-in function " ++ Name ++ ">".
