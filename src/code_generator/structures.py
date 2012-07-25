@@ -303,10 +303,11 @@ class For:
             ('move', [('y', heap_context), ('x', 1)]),
             ('call', [4, (module_name, '%s/%d' % (self.name, 4))]),
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-            ('get_tuple_element', [('x', 0), 1, ('y', heap_context)]),
         ]
         if is_in_class:
             code += [('get_tuple_element', [('x', 0), 2, ('y', heap_class_context)])]
+        else:
+            code += [('get_tuple_element', [('x', 0), 1, ('y', heap_context)])]
         return code
 
 
@@ -339,15 +340,17 @@ class If:
         
         code = [
             ('label', []),
-            ('func_info', [('atom', module_name), ('atom', self.name), 3]),
+            ('func_info', [('atom', module_name), ('atom', self.name), 4]),
             ('label', []),
             ('allocate', [heap_n, 0]),
             # memoria
             ('move', [('x', 0), ('y', heap_memory)]),
             # contesto
             ('move', [('x', 1), ('y', heap_context)]),
+            # class_context (se c'è)
+            ('move', [('x', 2), ('y', heap_class_context)]),
             # lista condizioni
-            ('move', [('x', 2), ('y', heap_aux)]),
+            ('move', [('x', 3), ('y', heap_aux)]),
             # stack
             ('move', [('nil', None), ('y', heap_stack)]),
         ]
@@ -362,8 +365,10 @@ class If:
                 b.is_in_class = self.is_in_class
                 code += b.generate()
             code += [
-                ('put_list', [('y', heap_context), ('nil', None), ('x', 0)]),
-                ('put_list', [('y', heap_memory), ('x', 0), ('x', 0)]),
+                ('put_tuple', [3, ('x', 0)]),
+                ('put', [('y', heap_memory)]),
+                ('put', [('y', heap_context)]),
+                ('put', [('y', heap_class_context)]),
                 ('deallocate', [heap_n]),
                 ('return', []),
                 ('label', [f(i)]),
@@ -376,8 +381,10 @@ class If:
                 code += b.generate()
         
         code += [
-            ('put_list', [('y', heap_context), ('nil', None), ('x', 0)]),
-            ('put_list', [('y', heap_memory), ('x', 0), ('x', 0)]),
+            ('put_tuple', [3, ('x', 0)]),
+            ('put', [('y', heap_memory)]),
+            ('put', [('y', heap_context)]),
+            ('put', [('y', heap_class_context)]),
             ('deallocate', [heap_n]),
             ('return', []),
         ]
@@ -387,7 +394,7 @@ class If:
     def inline(self):
         module_name = self.module_name
         conds = self.conds
-        # passa all'if (context, lista dei risultati delle condizioni)
+        # passa all'if (memory, context, class_context, lista dei risultati delle condizioni)
         code = list()
         for c in conds:
             c.module_name = self.module_name
@@ -395,14 +402,25 @@ class If:
             code += c.generate()
             code += to_stack()
         code += from_stack(len(conds))
+        
+        code += [
+            ('move', [('x', 2), ('x', 1)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('call_ext', [2, ('extfunc', 'base:bool_obj_list_to_value_list/2')]),
+            ('move', [('x', 0), ('x', 3)]),
+        ]
         code += [
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('y', heap_context), ('x', 1)]),
-            ('call', [3, (module_name, '%s/%d' % (self.name, 3))]),
-            ('move', [('x', 0), ('y', heap_context)]),
-            ('get_list', [('x', 0), ('y', heap_memory), ('x', 0)]),
-            ('get_list', [('x', 0), ('y', heap_context), ('x', 0)]),
+            ('move', [('y', heap_class_context), ('x', 2)]),
+            ('call', [4, (module_name, '%s/%d' % (self.name, 4))]),        
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
         ]
+        if self.is_in_class:
+            code += [('get_tuple_element', [('x', 0), 2, ('y', heap_class_context)])]
+        else:
+            code += [('get_tuple_element', [('x', 0), 1, ('y', heap_context)])]
+            
         return code
 
 class Class:
@@ -741,8 +759,28 @@ class Gt:
         return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.obj1, self.obj2)
 
     def generate(self):
-        return call_method(self.module_name, '__gt__', (self.obj1, self.obj2),
-            memory_expected=False)
+        obj1 = self.obj1
+        obj2 = self.obj2
+        module_name = self.module_name
+        code = list()
+        code += evaluate(self.module_name, self.is_in_class, obj1)
+        code += to_stack()
+        code += evaluate(self.module_name, self.is_in_class, obj2)
+        code += to_stack()
+        code += from_stack(2)
+        
+        # gt(M, C, ModuleName, Obj, Other)
+        code += [
+            ('get_list', [('x', 2), ('x', 3), ('x', 0)]),
+            ('get_list', [('x', 0), ('x', 4), ('x', 0)]),
+            ('move', [('y', heap_memory), ('x', 0)]),
+            ('move', [('y', heap_context), ('x', 1)]),
+            ('move', [('atom', module_name), ('x', 2)]),
+            ('call_ext', [5, ('extfunc', 'common:gt/5')]),
+            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+        ]
+        return code
         
 class Add:
     def __init__(self, obj1, obj2):

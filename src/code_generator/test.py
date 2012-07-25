@@ -212,20 +212,22 @@ def test10():
     print '-- TEST 10 --'
     print 'output would be...'
 
-    a = 9
+    a = 6
+    print a > 7
     if a > 7:
         print ">7"
     else:
-        print "->"
+        print "<7"
         print "else!"
 
     print '------------'
 
     tree = Module([
-        Assign('a', Int(9)),
-        If([Gt(Var('a'), Str("7"))], [
+        Assign('a', Int(6)),
+        Print(Gt(Var('a'), Int(7))),
+        If([Gt(Var('a'), Int(7))], [
             [Print(Str(">7"))],
-            [Print(Str("->")), Print(Str("else!"))]
+            [Print(Str("<7")), Print(Str("else!"))],
         ]),
     ])
 
@@ -665,8 +667,54 @@ def test28():
         ])
     ])
 
+def test29():
+    global tree
+    print '-- TEST 29 --'
+    print 'output would be...'
+    
+    a = 5
+    print a > 7
+
+    print '------------'
+
+    tree = Module([
+        Assign('a', Int(5)),
+        Print(Gt(Var('a'), Int(7))),
+    ])
+    
+def test30():
+    global tree
+    print '-- TEST 30 --'
+    print 'output would be...'
+    
+    a = 10
+    class Pippo:
+        print a > 7
+        if a > 7:
+            print ">7"
+            b = 8
+        else:
+            print "<7"
+            print "else!"
+        print b
+
+    print '------------'
+
+    tree = Module([
+        Assign('a', Int(10)),
+        Class('Pippo', [
+            Print(Gt(Var('a'), Int(7))),
+            If([Gt(Var('a'), Int(7))], [
+                [Print(Str(">7")), Assign('b', Int(8))],
+                [Print(Str("<7")), Print(Str("else!"))],
+            ]),
+            Print(Var('b')),
+        ]),
+        # Debug('memory'),
+    ])
+        
 def main():
-    test28()
+    test30()
     compose()
 
 if __name__ == '__main__':

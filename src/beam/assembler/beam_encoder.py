@@ -125,7 +125,7 @@ class BeamEncoder():
     def parse_code(self, code):
         setattr(self, self.atoms[0], self.module_name)
         fun_r = list()
-        print code ####  <--------
+        # print code
         for fun in code:
             instr_r = list()
             for instr in fun:

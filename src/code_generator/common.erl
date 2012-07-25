@@ -2,7 +2,7 @@
 -export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, 
          print_standard_or_overwrited/2, read_memory/2, destroy_locals/2, dot/5, dot2/6,  
          get_attribute/3, call/5, is_builtin_or_intance/1, links_methods_to_class/2, 
-         check_arity/2, set_object_attribute/4]).
+         check_arity/2, set_object_attribute/4, gt/5]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -213,7 +213,6 @@ check_arity(TargetState, P) ->
             throw_except("TypeError: " ++ BeautyName ++ "() takes " ++ ArityRepr ++ " (" ++ integer_to_list(NParams) ++ " given)~n")
     end.
 
-
 call(M, C, ModuleName, Obj, Args) ->
     ObjState = common:read_memory(M, Obj),
     Type = orddict:fetch("__type__", ObjState),
@@ -366,6 +365,23 @@ dot2(M, C, ModuleName, Obj, Attribute, ObjVal) ->
             base:object___setattr__(M, Obj, Attribute, ObjVal)
     end.
     
+gt(M, C, ModuleName, Obj, Other) ->
+    ObjState = common:read_memory(M, Obj),
+    Type = orddict:fetch("__type__", ObjState),
+    case Type of
+        "instance" ->
+            ClassObj = orddict:fetch("__class__", ObjState),
+            Res = get_attribute(M, ClassObj, "__gt__"),
+            if 
+                is_list(Res) ->
+                    erlang:apply(base, erlang:list_to_atom(Res ++ "___gt__"), [Obj, Other]);
+                is_integer(Res) ->
+                    user_defined_call(M, C, ModuleName, Res, [M, Obj, Other])
+            end;
+        _ ->
+            Res = get_attribute(M, Obj, "__gt__"),
+            erlang:apply(base, erlang:list_to_atom(Res ++ "___gt__"), [M, Obj, Other])
+    end.
     
 print_standard_or_overwrited(M, Obj) ->
     % guarda tra qualche superclasse in cerca di __repr__,
