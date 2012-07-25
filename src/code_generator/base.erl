@@ -1,6 +1,7 @@
 -module(base).
 -export([object___getattribute__/3, object___setattr__/4,
          instance___new__/2, instance___call__/3, instance___print__/2,
+         bool___new__/2, bool___print__/2, bool_obj_list_to_value_list/2,
          int___new__/2, int___add__/3, int___gt__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
          function___new__/5, function___call__/4, function___repr__/2, 
          instancemethod___new__/5, instancemethod___print__/2,
@@ -77,6 +78,24 @@ instance___print__(Memory, Self) ->
     BeautyName = orddict:fetch("beauty_class_name", SelfState),
     "<__main__." ++ BeautyName ++ " object at " ++ integer_to_list(Self) ++ ">".
 
+% ----- bool -----
+bool___new__(Memory, V) ->
+    A = orddict:new(),
+    B = orddict:store("__type__", "bool", A),
+    State = orddict:store("__value__", V, B),
+    common:to_memory(Memory, State).
+
+bool___print__(Memory, Self) ->
+    SelfState = common:read_memory(Memory, Self),
+    Value = orddict:fetch("__value__", SelfState),
+    case Value of
+        true -> "True";
+        false -> "False"
+    end.
+
+bool_obj_list_to_value_list(Memory, ObjList) ->
+    [orddict:fetch("__value__", common:read_memory(Memory, Obj)) || Obj <- ObjList].
+
 % ----- int -----
 
 int___new__(Memory, N) ->
@@ -117,7 +136,7 @@ int___gt__(Memory, Self, Other) ->
         "int" ->
             A = orddict:fetch("__value__", SelfState),
             B = orddict:fetch("__value__", OtherState),
-            A > B;
+            bool___new__(Memory, A > B);
         _ ->
             erlang:error("TypeError: unsupported operand type(s) for >: 'int' and '" ++
                 TypeOther ++ "'")
