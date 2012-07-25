@@ -724,15 +724,9 @@ def test31():
     print '------------'
 
     tree = Module([
-        # Assign('n', Call(Var('range'), [Int(1), Int(3)])),
-        # Print(Var('n')),
-        # Debug('memory'),
         For('i', Call(Var('range'), [Int(1), Int(3)]), [
             Print(Var('i')),
         ]),
-        # For('i', Range(Int(1), Int(3)), [
-        #     Print(Var('i')),
-        # ]),
     ])
         
 def main():
