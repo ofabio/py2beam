@@ -1,0 +1,6 @@
+✓ - sistemare Gt ed If
+F - implementare range come funzione builtin
+F - implementare le operazioni aritmetiche principali (+, -, /, *)
+F - implementare l'ereditarietà in structures.Class
+R - implementare la precedenza tra gli operatori
+R - implementare le espressioni (es. (5+4)*2 )
