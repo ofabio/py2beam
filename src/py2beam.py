@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-import sys, os
+import sys, os, shutil
 import getopt
 from subprocess import call
 from frontend.new_scanner import PyScanner
@@ -63,14 +63,24 @@ def main(argv=None):
                 print code
                 parser = PyParser(lexer=scanner)
                 tree = parser.parse(code)
-                composer = Composer(out_path, beam_name, tree, verbose)
+                build_dir = os.path.join(out_path, filename)
+                # print os.getcwd()
+                if not os.path.exists(build_dir) or not os.path.isdir(build_dir):
+                    # print "not", build_dir
+                    os.makedirs(build_dir)
+                for lib in ("base", "common", "builtins"):
+                    if not os.path.exists(os.path.join(build_dir, "%s.beam" % lib)):
+                        print "inserting %s lib..." % lib
+                        shutil.copyfile(os.path.join("src", "code_generator", "%s.beam" % lib), os.path.join(build_dir, "%s.beam" % lib))
+                composer = Composer(build_dir, beam_name, tree, verbose)
                 composer.generate()
                 composer.write()
                 if execute:
                     print 79 * "#"
                     print 33*" " + "NOW EXECUTING"
                     print 79 * "#"
-                    call(["erl", "-pa", out_path, "-run", beam_name, "module", "-run", "init", "stop", "-noshell"])
+                    # erl -pa ./ -run prova module -run init stop -noshell
+                    call(["erl", "-pa", build_dir, "-run", beam_name, "module", "-run", "init", "stop", "-noshell"])
                     print 79 * "#"
     except Usage, err:
         # print >> sys.stderr, sys.argv[0].split("/")[-1] + ": " + str(err.msg)
@@ -81,49 +91,6 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
-    # main()
-    beam_name = "prova"
-    scanner = PyScanner()
-    code = r'''
-def factorial(n):
-    if n == 0.0:
-        return 1
-    elif n > 0.0:
-        f = 1.0
-        for i in xrange(1, int(n)+1):
-            f *= i
-        return f
-    else:
-        return None'''
-    code = r"""
-a = 230
-def call_go():
-    b = 7
-    #print b
-call_go()
-print a
-#print 3
-"""
-    code = r"""
-a = 3
-print a
-class Pippo:
-    a = 5
-    def fun1(self):
-        print 12
-p = Pippo()
-p.fun1()
-print Pippo.a
-"""
-    print code
-    parser = PyParser(lexer=scanner)
-    tree = parser.parse(code)
-    composer = Composer('code_generator', beam_name, tree)
-    composer.generate()
-    composer.write()
-    from subprocess import call
-    # erl -pa ./ -run prova module -run init stop -noshell
-    # call(["erl", "-pa", "./code_generator", "-run", "prova", "module", "-run", "init", "stop", "-noshell"])
 
 
 

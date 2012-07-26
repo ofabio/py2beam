@@ -44,12 +44,15 @@ def p_newline_stmt_star(p):
 
 def p_eval_input(p):
     """eval_input : testlist newline_star ENDMARKER"""
-    pass
+    p[0] = p[1] + p[2]
 
 def p_newline_star(p):
     """newline_star : NEWLINE newline_star
                     | empty"""
-    pass
+    if len(p) == 3:
+        p[0] = p[2]
+    else:
+        p[0] = p[1]
 
 def p_decorator(p):
     """decorator : AT dotted_name NEWLINE
@@ -90,6 +93,8 @@ def p_varargslist(p):
                    | fpdef assign_test_opt comma_fpdef_assign_test_opt_star comma_opt"""
     if len(p) == 5:
         if p[2] != []:
+            if isinstance(p[1], Var):
+                p[1] = p[1].name
             tmp = Assign(p[1], p[2])
         else:
             tmp = p[1]
@@ -102,6 +107,8 @@ def p_comma_fpdef_assign_test_opt_star(p):
                                         | empty"""
     if len(p) == 5:
         if p[3] != []:
+            if isinstance(p[2], Var):
+                p[2] = p[2].name
             tmp = Assign(p[2], p[3])
         else:
             tmp = p[2]
@@ -114,6 +121,8 @@ def p_fpdef_assign_test_opt_comma_star(p):
                                         | empty"""
     if len(p) == 5:
         if p[2] != []:
+            if isinstance(p[1], Var):
+                p[1] = p[1].name
             tmp = Assign(p[1], p[2])
         else:
             tmp = p[1]
@@ -156,7 +165,14 @@ def p_stmt(p):
 
 def p_simple_stmt(p):
     """simple_stmt : small_stmt semicolon_small_stmt_star semicolon_opt NEWLINE"""
-    p[0] = [p[1]] + p[2]
+    if p[1] == []:
+        stmt = p[1]
+    else:
+        stmt = [p[1]]
+    if p[2] != []:
+        p[0] = stmt + p[2]
+    else:
+        p[0] = stmt
 
 def p_semicolon_opt(p):
     """semicolon_opt : SEMICOLON
@@ -166,14 +182,13 @@ def p_semicolon_opt(p):
 def p_semicolon_small_stmt_star(p):
     """semicolon_small_stmt_star : SEMICOLON small_stmt semicolon_small_stmt_star
                                  | empty"""
-    if len(p) > 2:
+    if len(p) == 4:
         p[0] = [p[2]] + p[3]
     else:
         p[0] = p[1]
 
 def p_small_stmt(p):
     """small_stmt : expr_stmt
-                  | assign_stmt
                   | print_stmt
                   | del_stmt
                   | pass_stmt
@@ -182,17 +197,20 @@ def p_small_stmt(p):
                   | global_stmt
                   | exec_stmt
                   | assert_stmt"""
+                  # | assign_stmt"""
     p[0] = p[1]
 
-def p_assign_stmt(p): # FIXME: masking standard assign production
-    """assign_stmt : NAME ASSIGN testlist"""
-                   # | power ASSIGN testlist"""
-    p[0] = Assign(str(p[1]), p[3])
+# def p_assign_stmt(p): # FIXME: masking standard assign production
+#     """assign_stmt : NAME ASSIGN testlist"""
+#                    # | power ASSIGN testlist"""
+#     p[0] = Assign(str(p[1]), p[3])
 
 def p_expr_stmt(p):
-    """expr_stmt : testlist assign_yield_testlist_or_star"""
-                 # | testlist augassign yield_testlist_or"""
+    """expr_stmt : testlist assign_yield_testlist_or_star
+                 | testlist augassign yield_testlist_or"""
     if p[2] != []:
+        if isinstance(p[1], Var):
+            p[1] = p[1].name
         p[0] = Assign(p[1], p[2])
     else:
         p[0] = p[1]
@@ -202,6 +220,8 @@ def p_assign_yield_testlist_or_star(p):
                                      | empty"""
     if len(p) == 4: # = qualcosa = qualcosa = 5
         if p[3] != []:
+            if isinstance(p[2], Var):
+                p[2] = p[2].name
             p[0] = Assign(p[2], p[3])
         else:
             p[0] = p[2]
@@ -226,6 +246,7 @@ def p_augassign(p):
                  | SELFRIGHTSHIFT
                  | SELFPOWER
                  | SELFFLOORDIVIDE"""
+    raise NotImplementedError
     p[0] = p[1]
 
 # For normal assignments, additional restrictions enforced by the interpreter
@@ -255,7 +276,7 @@ def p_del_stmt(p):
 
 def p_pass_stmt(p):
     """pass_stmt : PASS"""
-    pass
+    p[0] = []
 
 def p_flow_stmt(p):
     """flow_stmt : break_stmt
@@ -407,21 +428,23 @@ def p_while_stmt(p):
                   | WHILE test COLON suite ELSE COLON suite"""
     pass
 
-# def p_for_stmt(p):
-#     """for_stmt : FOR exprlist IN testlist COLON suite
-#                 | FOR exprlist IN testlist COLON suite ELSE COLON suite"""
-#     if len(p) == 7:
-#         p[0] = For(p[2], p[4], p[6])
-#     else:
-#         raise NotImplementedError
-
-def p_for_stmt(p): # FIXME: modified to accept only NAME instead of exprlist
-    """for_stmt : FOR NAME IN testlist COLON suite
-                | FOR NAME IN testlist COLON suite ELSE COLON suite"""
+def p_for_stmt(p):
+    """for_stmt : FOR exprlist IN testlist COLON suite
+                | FOR exprlist IN testlist COLON suite ELSE COLON suite"""
     if len(p) == 7:
-        p[0] = For(str(p[2]), p[4], p[6])
+        if isinstance(p[2], Var):
+            p[2] = p[2].name
+        p[0] = For(p[2], p[4], p[6])
     else:
         raise NotImplementedError
+
+# def p_for_stmt(p): # FIXME: modified to accept only NAME instead of exprlist
+#     """for_stmt : FOR NAME IN testlist COLON suite
+#                 | FOR NAME IN testlist COLON suite ELSE COLON suite"""
+#     if len(p) == 7:
+#         p[0] = For(str(p[2]), p[4], p[6])
+#     else:
+#         raise NotImplementedError
 
 def p_try_stmt(p):
     """try_stmt : TRY COLON suite except_clause_colon_suite_plus else_colon_suite_opt finally_colon_suite_opt
@@ -715,6 +738,7 @@ def p_term(p):
         p[0] = prev
         
     else:
+        print "Term:", p[1]
         p[0] = p[1]
 
 def p_mult_divide_remainder_floordivide_factor_star(p):
@@ -751,7 +775,7 @@ def p_factor(p):
         raise NotImplementedError
         # p[0] = FactOp(p[1], p[2])
     else:
-        # print "Factor:", p[1]
+        print "Factor:", p[1]
         p[0] = p[1]
 
 # ex: 2**3 = 8 (right side holds precedence)
@@ -806,6 +830,7 @@ def p_atom(p):
             # | BACKTICK testlist1 BACKTICK"""
     if len(p) == 2:
         if isinstance(p[1], int):
+            print "DEVI ARRIVARE QUI!!", p[1]
             p[0] = Int(p[1])
         elif isinstance(p[1], float):
             raise NotImplementedError
@@ -874,10 +899,10 @@ def p_varargslist_opt(p):
     pass
 
 def p_trailer(p):
-    """trailer : LSQUAREBKT subscriptlist RSQUAREBKT
-               | PERIOD NAME
-               | LPAREN power_comma_star RPAREN"""
-               # | LPAREN arglist_opt RPAREN
+    """trailer : PERIOD NAME
+               | LPAREN arglist_opt RPAREN
+               | LSQUAREBKT subscriptlist RSQUAREBKT"""
+               # | LPAREN power_comma_star RPAREN"""
     if len(p) == 3:
         # print "Trailer:", p[2].__class__
         # if isinstance(p[-1], basestring):
@@ -887,6 +912,8 @@ def p_trailer(p):
         #     print "Dot(%s, '%s')" % (p[-1], p[2])
         #     p[0] = Dot(p[-1], str(p[2]))
         # p[0] = ["Dot", "'%s'" % p[2]]
+        if not isinstance(p[2], list):
+            p[2] = [p[2]]
         p[0] = [Dot, str(p[2])]
     else:
         if p[1] == '(':
@@ -900,16 +927,16 @@ def p_trailer(p):
         else:
             raise NotImplementedError
 
-def p_power_comma_star(p):
-    """power_comma_star : power
-                        | power COMMA power_comma_star
-                        | empty"""
-    if len(p) == 2:
-        p[0] = [p[1]]
-    if len(p) == 4:
-        p[0] = [p[1]] + [p[3]]
-    else:
-        p[0] = p[1]
+# def p_power_comma_star(p):
+#     """power_comma_star : power
+#                         | power COMMA power_comma_star
+#                         | empty"""
+#     if len(p) == 2:
+#         p[0] = [p[1]]
+#     if len(p) == 4:
+#         p[0] = [p[1]] + [p[3]]
+#     else:
+#         p[0] = p[1]
 
 def p_arglist_opt(p):
     """arglist_opt : arglist
@@ -994,7 +1021,7 @@ def p_classdef(p):
     elif len(p) == 7:
         p[0] = Class(str(p[2]), p[6])
     else:
-        p[0] = Class(str(p[2]), p[7], p[4])
+        p[0] = Class(str(p[2]), p[7], p[4].name)
 
 def p_arglist(p):
     """arglist : argument_comma_star argument
@@ -1003,7 +1030,7 @@ def p_arglist(p):
                | argument_comma_star MULT test comma_argument_star COMMA POWER test
                | argument_comma_star POWER test"""
     if len(p) == 3:
-        print "Arglist:", p[1], p[2]
+        # print "Arglist:", p[1], p[2]
         p[0] = p[1] + [p[2]]
     else:
         raise NotImplementedError
@@ -1112,8 +1139,11 @@ class PyParser(object):
 from new_scanner import PyScanner
 if __name__ == '__main__':
     scanner = PyScanner()
-    code = """
-print 10 < 2
+    code = """ 
+def hello(n):
+    print n
+
+hello(5)
 """
 # For('i', Range(Int(0), Int(2)), [Print(Var('i'))])
     print code
