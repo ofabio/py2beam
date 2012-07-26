@@ -13,7 +13,7 @@
 
 object___getattribute__(M, Obj, Attribute) ->
     Res = common:get_attribute(M, Obj, Attribute),
-    {_, State} = orddict:fetch(Obj, M),
+    State = read_memory(M, Obj),
     if 
         is_list(Res) ->
             % methodwrapper o wrapperdescriptor a seconda che l'istanza sia

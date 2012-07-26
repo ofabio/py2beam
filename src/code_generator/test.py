@@ -734,16 +734,48 @@ def test32():
     print '-- TEST 32 --'
     print 'output would be...'
 
-    print (((3 + 7) / 2) * 5)
+    print ((((3 + 7) / 2) * 5) - 20)
 
     print '------------'
 
     tree = Module([
-        Print(Mul(Div(Add(Int(3),Int(7)), Int(2)), Int(5))),
+        Print(Sub(Mul(Div(Add(Int(3),Int(7)), Int(2)), Int(5)), Int(20))),
+    ])
+
+def test33():
+    global tree
+    print '-- TEST 33 --'
+    print 'output would be...'
+
+    class Pippo(object):
+        def hello(self):
+            print 5
+        
+    class Pluto(Pippo):
+        pass
+        
+    p = Pluto()
+    p.hello()
+
+    print '------------'
+
+    tree = Module([
+        Class('Pippo', [
+            Def('hello', ['self'], [
+                Print(Int(5)),
+            ]),
+        ]),
+        Class('Pluto', [
+            # Def('hello', ['self'], [
+            #     Print(Int(5)),
+            # ]),
+        ]),
+        Assign('p', Call(Var('Pluto'), [])),
+        Call(Dot(Var('p'), 'hello'), []),
     ])
         
 def main():
-    test32()
+    test33()
     compose()
 
 if __name__ == '__main__':
