@@ -40,7 +40,7 @@ def p_newline_stmt_star(p):
         else:
             p[0] = p[1] + p[2]
     else:
-        p[0] = []
+        p[0] = p[1]
 
 def p_eval_input(p):
     """eval_input : testlist newline_star ENDMARKER"""
@@ -144,10 +144,10 @@ def p_fplist(p):
 def p_comma_fpdef_star(p):
     """comma_fpdef_star : COMMA fpdef comma_fpdef_star
                         | empty"""
-    if len(p) > 2:
+    if len(p) == 3:
         p[0] = [p[2]] + p[3]
     else:
-        p[0] = []
+        p[0] = p[1]
 
 def p_stmt(p):
     """stmt : simple_stmt
@@ -392,7 +392,7 @@ def p_compound_stmt(p):
 
 def p_if_stmt(p):
     """if_stmt : IF test COLON suite elif_test_colon_suite_star else_colon_suite_opt"""
-    p[0] = If(p[2], [p[4], p[6]])
+    p[0] = If([p[2]], [p[4], p[6]])
 
 def p_elif_test_colon_suite_star(p):
     """elif_test_colon_suite_star : ELIF test COLON suite elif_test_colon_suite_star
@@ -407,11 +407,19 @@ def p_while_stmt(p):
                   | WHILE test COLON suite ELSE COLON suite"""
     pass
 
-def p_for_stmt(p):
-    """for_stmt : FOR exprlist IN testlist COLON suite
-                | FOR exprlist IN testlist COLON suite ELSE COLON suite"""
+# def p_for_stmt(p):
+#     """for_stmt : FOR exprlist IN testlist COLON suite
+#                 | FOR exprlist IN testlist COLON suite ELSE COLON suite"""
+#     if len(p) == 7:
+#         p[0] = For(p[2], p[4], p[6])
+#     else:
+#         raise NotImplementedError
+
+def p_for_stmt(p): # FIXME: modified to accept only NAME instead of exprlist
+    """for_stmt : FOR NAME IN testlist COLON suite
+                | FOR NAME IN testlist COLON suite ELSE COLON suite"""
     if len(p) == 7:
-        p[0] = For(p[2], p[4], p[6])
+        p[0] = For(str(p[2]), p[4], p[6])
     else:
         raise NotImplementedError
 
@@ -563,10 +571,11 @@ def p_not_test(p):
     else:
         p[0] = p[1]
 
+# a < b < c should be a < b and b < c
 def p_comparison(p):
     """comparison : expr comp_op_expr_star"""
     if p[2] != []:
-        p[0] = p[2]
+        p[0] = p[2][0](p[1], p[2][1])
         # raise NotImplementedError
         # p[0] = Comp(p[1], p[2]) # Comp(e1, [op, e2])
     else:
@@ -576,9 +585,11 @@ def p_comp_op_expr_star(p):
     """comp_op_expr_star : comp_op expr comp_op_expr_star
                          | empty"""
     if len(p) == 4:
-        print "HEY", p[1], p[2]
-        p[0] = [p[1](p[-1], p[2])]
-        # raise NotImplementedError
+        if p[3] != []:
+            raise NotImplementedError
+            # p[0] = [p[1], p[3][0](p[2], p[3][1])]
+        else:
+            p[0] = [p[1], p[2]]
     else:
         p[0] = p[1]
 
@@ -596,10 +607,15 @@ def p_comp_op(p):
     if len(p) == 2:
         if p[1] == ">":
             p[0] = Gt
+        if p[1] == "<":
+            p[0] = Lt
+        if p[1] == "==":
+            p[0] = Eq
         else:
             raise NotImplementedError
     else:
-        p[0] = "%s %s" % (p[1], p[2])
+        raise NotImplementedError
+        # p[0] = "%s %s" % (p[1], p[2])
 
 def p_expr(p):
     """expr : xor_expr bitwiseor_xor_expr_star"""
@@ -666,8 +682,7 @@ def p_leftshift_rightshift_arith_expr_star(p):
 def p_arith_expr(p):
     """arith_expr : term plus_minus_term_star"""
     if p[2] != []:
-        p[0] = p[2]
-        # raise NotImplementedError
+        p[0] = p[2][0](p[1], p[2][1])
     else:
         p[0] = p[1]
 
@@ -677,17 +692,28 @@ def p_plus_minus_term_star(p):
                             | empty"""
     if len(p) == 4:
         if p[1] == '+':
-            print "ADD:", p[-1], p[2]
-            p[0] = Add(p[-1], p[2])
+            if p[3] != []:
+                p[0] = [Add, p[3][0](p[2], p[3][1])]
+            else:
+                p[0] = [Add, p[2]]
         else:
-            raise NotImplementedError
+            if p[3] != []:
+                p[0] = [Sub, p[3][0](p[2], p[3][1])]
+            else:
+                p[0] = [Sub, p[2]]
     else:
         p[0] = p[1]
 
 def p_term(p):
     """term : factor mult_divide_remainder_floordivide_factor_star"""
     if p[2] != []:
-        raise NotImplementedError
+        # p[0] = p[2][0](p[1], p[2][1])
+        prev = p[1]
+        for fa in p[2]:
+            # print "inside:", tr[0], prev, tr[1]
+            prev = fa[0](prev, fa[1])
+        p[0] = prev
+        
     else:
         p[0] = p[1]
 
@@ -698,10 +724,24 @@ def p_mult_divide_remainder_floordivide_factor_star(p):
                                                      | FLOORDIVIDE factor mult_divide_remainder_floordivide_factor_star
                                                      | empty"""
     if len(p) == 4:
-        raise NotImplementedError
+        if p[1] == '*':
+            p[0] = [[Mul, p[2]]] + p[3]
+            # if p[3] != []:
+            #     # p[0] = [Mul, p[3][0](p[2], p[3][1])]
+            # else:
+            #     p[0] = [[Mul, p[2]]]
+        elif p[1] == '/':
+            p[0] = [[Div, p[2]]] + p[3]
+            # if p[3] != []:
+            #     # p[0] = [Div, p[3][0](p[2], p[3][1])]
+            # else:
+            #     p[0] = [[Div, p[2]]]
+        else:
+            raise NotImplementedError
     else:
         p[0] = p[1]
 
+# unary arithmetic and bitwise operations
 def p_factor(p):
     """factor : PLUS factor
               | MINUS factor
@@ -714,6 +754,7 @@ def p_factor(p):
         # print "Factor:", p[1]
         p[0] = p[1]
 
+# ex: 2**3 = 8 (right side holds precedence)
 def p_power(p):
     """power : atom trailer_star power_factor_opt"""
     if p[2] == [] and p[3] == []:
@@ -907,12 +948,18 @@ def p_sliceop(p):
 
 def p_exprlist(p):
     """exprlist : expr comma_expr_star comma_opt"""
-    pass
+    if p[2] != []:
+        raise NotImplementedError
+    else:
+        p[0] = p[1]
 
 def p_comma_expr_star(p):
     """comma_expr_star : COMMA expr comma_expr_star
                        | empty"""
-    pass
+    if len(p) == 4:
+        p[0] = [p[2]] + p[3]
+    else:
+        p[0] = p[1]
 
 def p_testlist(p):
     """testlist : test comma_test_star comma_opt"""
@@ -1031,17 +1078,17 @@ def p_comma_test_star(p):
     if len(p) == 4:
         p[0] = [p[2]] + p[3]
     else:
-        p[0] = []
+        p[0] = p[1]
 
 # not used in grammar, but may appear in "node" passed from Parser to Compiler
 def p_encoding_decl(p):
     """encoding_decl : NAME"""
-    pass
+    raise NotImplementedError
 
 def p_yield_expr(p):
     """yield_expr : YIELD
                   | YIELD testlist"""
-    pass
+    raise NotImplementedError
 
 def p_empty(p):
     """empty : """
@@ -1066,14 +1113,15 @@ from new_scanner import PyScanner
 if __name__ == '__main__':
     scanner = PyScanner()
     code = """
-print (5).__repr__()
+print 10 < 2
 """
+# For('i', Range(Int(0), Int(2)), [Print(Var('i'))])
     print code
     scanner.input(code)
     while True:
         tok = scanner.token()
         if not tok: break
-        # print tok
+        print tok
     parser = PyParser(lexer=scanner)
     parser.parse(code)
 

@@ -39,7 +39,7 @@ reserved = {
    'return' : 'RETURN',
    'def' : 'DEF',
    'lambda' : 'LAMBDA',
-   'try' : 'TRY'
+   'try' : 'TRY',
 }
 
 # List of token names.   This is always required
@@ -121,17 +121,54 @@ floatnumber     = "(" + pointfloat + ")|(" + exponentfloat + ")"
 #floatnumber     = "([0-9]*\.[0-9]+)"   #"[0-9]+\.[0-9]+|[0-9]+.|([0-9]+|[[0-9]+].[0-9]+|[0-9]+.)(e|E)[+|-][0-9]+"
 #floatnumber     = "[0-9]+\.[0-9]+|[0-9]+\.|([0-9]+|[0-9]+\.[0-9]+|[0-9]+\.)(e|E)[+|-][0-9]+"
 
-escapeseq           = "\\" + letter
-longstringchar      = "[^\\\\]"
-shortstringchar     = r"[^\\n']"
-longstringitem      = longstringchar + "|" + escapeseq
-shortstringitem     = shortstringchar + "|" + escapeseq
-longstring          = "'''" + longstringitem + "*'''|\"\"\"" + longstringitem + "*\"\"\""
-shortstring         = "'" + shortstringitem + "*'|\"" + shortstringitem + "*\""
-stringprefix        = "r|u|ur|R|U|UR|Ur|uR|b|B|br|Br|bR|BR"
-stringliteral       = "[" + stringprefix + "]" + "(" + shortstring + "|" + longstring + ")"
+# escapeseq           = "\\" + letter
+# longstringchar      = "[^\\\\]"
+# shortstringchar     = r"[^\\n']"
+# longstringitem      = longstringchar + "|" + escapeseq
+# shortstringitem     = shortstringchar + "|" + escapeseq
+# longstring          = "'''" + longstringitem + "*'''|\"\"\"" + longstringitem + "*\"\"\""
+# shortstring         = "'" + shortstringitem + "*'|\"" + shortstringitem + "*\""
+# stringprefix        = "r|u|ur|R|U|UR|Ur|uR|b|B|br|Br|bR|BR"
+# stringliteral       = "[" + stringprefix + "]" + "(" + shortstring + "|" + longstring + ")"
 #stringliteral       = r"('[^\\n']|\*'|\"[^\n\']|\*\"|'''[^\]|\*'''|\"\"\"[^\]|\*\"\"\")"
-stringliteral       = "'([^\\\n']|\\[a-zA-Z0-9\\])*'|\"([^\\\n']|\\[a-zA-Z0-9\\])*\""
+# stringliteral       = "'([^\\\n']|\\[a-zA-Z0-9\\])*'|\"([^\\\n']|\\[a-zA-Z0-9\\])*\""
+stringliteral = (r"""
+[uU]?[rR]?
+  (?:              # Single-quote (') strings
+  '''(?:                 # Triple-quoted can contain...
+      [^'\\]             | # a non-quote, non-backslash
+      \\.                | # a backslash followed by something
+      '{1,2}(?!')          # one or two quotes
+    )*''' |
+  '(?:                   # Non-triple quoted can contain...
+     [^'\n\\]            | # non-quote, non-backslash, non-NL
+     \\.                   # a backslash followed by something
+  )*' | """+
+r'''               # Double-quote (") strings
+  """(?:                 # Triple-quoted can contain...
+      [^"\\]             | # a non-quote, non-backslash
+      \\.                | # a backslash followed by something
+      "{1,2}(?!")          # one or two quotes
+    )*""" |
+  "(?:                   # Non-triple quoted can contain...
+     [^"\n\\]            | # non-quote, non-backslash, non-NL
+     \\.                   # a backslash followed by something
+  )*"
+)''')
+
+# stringliteral = (r"""
+# [uU]?[rR]?
+#   (?:              # Single-quote (') strings
+#   '(?:                   # Non-triple quoted can contain...
+#      [^'\n\\]            | # non-quote, non-backslash, non-NL
+#      \\.                   # a backslash followed by something
+#   )*' | """+
+# r'''               # Double-quote (") strings
+#   "(?:                   # Non-triple quoted can contain...
+#      [^"\n\\]            | # non-quote, non-backslash, non-NL
+#      \\.                   # a backslash followed by something
+#   )*"
+# )''')
 
 
 hexdigit        = r"\d|[a-f]|[A-F]"
@@ -150,9 +187,9 @@ def t_NUMBER(t):
     t.value = eval(t.value)
     return t
 
-# @TOKEN(stringliteral)
+@TOKEN(stringliteral)
 def t_STRING(t):
-    r"'([^\\']+|\\'|\\\\)*'"
+    # r"'([^\\']+|\\'|\\\\)*'"
     t.value = t.value[1:-1].decode("string-escape")
     return t
 

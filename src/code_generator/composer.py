@@ -16,7 +16,7 @@ from beam.assembler.beam_encoder import *
 
 
 class Composer:
-    def __init__(self, base_path, module_name, tree, verbose=False):
+    def __init__(self, base_path, module_name, tree, verbose=True):
         self.base_path = base_path
         self.module_name = module_name
         self.tree = tree
@@ -31,7 +31,7 @@ class Composer:
         
         code = self.assign_labels(code)
         
-        self.print_code(code)
+        # self.print_code(code)
         
         hb = HeaderBuilder(code)
         h = hb.get_header()

@@ -742,8 +742,38 @@ def test32():
         Print(Mul(Div(Add(Int(3),Int(7)), Int(2)), Int(5))),
     ])
         
+def test33():
+    global tree
+    print '-- TEST 33 --'
+    print 'output would be...'
+
+    print 10 < 3
+    print 6 < 11
+
+    print '------------'
+
+    tree = Module([
+        Print(Lt(Int(10), Int(3))),
+        Print(Lt(Int(6), Int(11))),
+    ])
+
+def test34():
+    global tree
+    print '-- TEST 34 --'
+    print 'output would be...'
+
+    print 10 == 10
+    print 6 == 11
+
+    print '------------'
+
+    tree = Module([
+        Print(Eq(Int(10), Int(10))),
+        Print(Eq(Int(6), Int(11))),
+    ])
+
 def main():
-    test32()
+    test34()
     compose()
 
 if __name__ == '__main__':
