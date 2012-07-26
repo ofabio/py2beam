@@ -427,7 +427,7 @@ class If:
 class Class:
     name_num = 0
     
-    def __init__(self, assign_to, body, super_=None):
+    def __init__(self, assign_to, body, super_='object'):
         self.module_name = None
         self.output = None
         self.name = "class__%d" % Class.name_num
@@ -500,18 +500,32 @@ class Class:
             ('move', [('y', heap_context), ('x', 1)]),
             ('call', [2, (module_name, '%s/%d' % (self.name, 2))]),
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
-            ('get_tuple_element', [('x', 0), 1, ('x', 2)]),
+            ('get_tuple_element', [('x', 0), 1, ('y', htb(0))]),
         ]
         
+        # risolvi il nome della superclasse passando (IsInClass, ClassContext, Context, SuperName)
+        if self.is_in_class:
+            code += [('move', [('atom', 'true'), ('x', 0)])]
+        else:
+            code += [('move', [('atom', 'false'), ('x', 0)])]
+        code += [
+            ('move', [('y', heap_class_context), ('x', 1)]),
+            ('move', [('y', heap_context), ('x', 2)]),
+            ('move', [('literal', self.super_), ('x', 3)]),
+            ('call_ext', [4, ('extfunc', 'base:class_resolve_super/4')]),
+        ]
+            
         # creo un oggetto classe passandogli il puntatore al codice, ovvero il nome
         # della classe vera, e il suo contesto
-        # "class___new__(Memory, ClassName, Context, BeautyName)"
+        # "class___new__(Memory, ClassName, ClassContext, Super, BeautyName)"
         # dopodichè assegno l'oggetto alla variabile self.assign_to
         code += [
+            ('move', [('x', 0), ('x', 3)]),
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('atom', self.name), ('x', 1)]),
-            ('move', [('literal', self.assign_to), ('x', 3)]),
-            ('call_ext', [4, ('extfunc', 'base:class___new__/4')]),
+            ('move', [('y', htb(0)), ('x', 2)]),
+            ('move', [('literal', self.assign_to), ('x', 4)]),
+            ('call_ext', [5, ('extfunc', 'base:class___new__/5')]),
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
             ('get_tuple_element', [('x', 0), 1, ('y', htb(0))]),
         ]

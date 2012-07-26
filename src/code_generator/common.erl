@@ -1,8 +1,8 @@
 -module(common).
 -export([init_memory/0, assign/4, test/0, to_memory/2, get_from_context/2, get_from_context/3, 
          print_standard_or_overwrited/2, read_memory/2, destroy_locals/2, dot/5, dot2/6,  
-         get_attribute/3, call/5, is_builtin_or_intance/1, links_methods_to_class/2, 
-         check_arity/2, set_object_attribute/4, call_keyword/6]).
+         get_attribute/3, call/5, is_base_or_intance/1, links_methods_to_class/2, 
+         check_arity/2, set_object_attribute/4, call_keyword/6, throw_except/1, is_base/1]).
 
 assign(Memory, [Local|ContextRest], Var, Obj) when not is_tuple(Local) ->
     {M, L} = assign_aux(Memory, Local, Var, Obj),
@@ -118,16 +118,6 @@ set_object_attribute(M, Obj, Key, Value) ->
     Context = orddict:fetch("__context__", State),
     NewContext = orddict:store(Key, Value, Context),
     set_object_property(M, Obj, "__context__", NewContext).
-    
-
-% call_method(Memory, Obj, Method, Params) ->
-%     {_, State} = orddict:fetch(Obj, Memory),
-%     Class = orddict:fetch("__type__", State),
-%     C_M = erlang:list_to_atom(Class ++ "_" ++ Method),
-%     erlang:apply(base, C_M, [Memory, Obj | Params]).
-
-% get_from_class_context(ClassContext, Context, Var) ->
-%     get_from_context([ClassContext|Context], Var).
 
 get_from_context(ClassContext, Context, Var) ->
     get_from_context([ClassContext|Context], Var).
@@ -148,8 +138,6 @@ dict_list_merge_aux([D|L], Dict) ->
 get_newest_dict(_, _, Value2) -> Value2.
 
 
-% get_attribute(_, Obj, _) when is_list(Obj) ->
-%     Obj;
 get_attribute(Memory, Obj, Name) ->
     State = read_memory(Memory, Obj),
     % io:format("Obj:~p~nMemory:~p~n", [Obj, Memory]),
@@ -162,13 +150,13 @@ get_attribute(Memory, Obj, Name) ->
             Type = orddict:fetch("__type__", State),
             try 
                 Sup = orddict:fetch("__class__", State),
-                if 
-                    is_list(Sup) -> Type;
+                if
+                    is_list(Sup) -> Sup;
                     is_integer(Sup) -> get_attribute(Memory, Sup, Name)
                 end
-              catch error:_ -> 
-                  Type
-              end
+            catch error:_ ->
+                Type
+            end
     end.
 
 user_defined_call(Memory, Context, ModuleName, Target, P) ->
@@ -255,7 +243,11 @@ call(M, C, ModuleName, Obj, Args) ->
             
         "builtin_function_or_method" ->
             Name = orddict:fetch("__value__", ObjState),
-            erlang:apply(builtins, erlang:list_to_atom(Name), [M | Args])
+            erlang:apply(builtins, erlang:list_to_atom(Name), [M | Args]);
+        "int" ->
+            throw_except("TypeError: 'int' object is not callable~n");
+        "str" ->
+            throw_except("TypeError: 'str' object is not callable~n")
     end.
 
 check_first_arg_is_ok(M, ObjState, []) ->
@@ -435,8 +427,8 @@ throw_except(Msg) ->
     % halt().
                 
     
-is_builtin_or_intance(A) ->
-    case is_builtin(A) of
+is_base_or_intance(A) ->
+    case is_base(A) of
         true ->
             true;
         false ->
@@ -448,13 +440,13 @@ is_builtin_or_intance(A) ->
             end
     end.
 
-is_builtin("object") ->
+is_base("object") ->
     true;
-is_builtin("int") ->
+is_base("int") ->
     true;
-is_builtin("str") ->
+is_base("str") ->
     true;
-is_builtin(_) ->
+is_base(_) ->
     false.
 
 is_instance("instance") ->

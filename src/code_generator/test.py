@@ -799,7 +799,8 @@ def test35():
             # Def('hello', ['self'], [
             #     Print(Int(5)),
             # ]),
-        ]),
+        ], 'Pippo'),
+        
         Assign('p', Call(Var('Pluto'), [])),
         Call(Dot(Var('p'), 'hello'), []),
     ])

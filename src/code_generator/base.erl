@@ -1,5 +1,5 @@
 -module(base).
--export([object___getattribute__/3, object___setattr__/4,
+-export([object___getattribute__/3, object___setattr__/4, object_attr__doc__/1,
          instance___new__/2, instance___call__/3, instance___print__/2,
          bool___new__/2, bool___print__/2, bool_obj_list_to_value_list/2,
          int___new__/2, int___add__/3, int___sub__/3, int___mul__/3, int___div__/3, 
@@ -9,11 +9,11 @@
          builtin_function_or_method___new__/2, builtin_function_or_method___print__/2,
          str___new__/2, str___add__/3, str___repr__/2, str___print__/2,
          list___new__/2, list_value/2, list___print__/2,
-         class___new__/4, class___print__/2]).
+         class___new__/5, class_resolve_super/4, class___print__/2]).
 
 object___getattribute__(M, Obj, Attribute) ->
     Res = common:get_attribute(M, Obj, Attribute),
-    State = read_memory(M, Obj),
+    State = common:read_memory(M, Obj),
     if 
         is_list(Res) ->
             % methodwrapper o wrapperdescriptor a seconda che l'istanza sia
@@ -26,11 +26,12 @@ object___getattribute__(M, Obj, Attribute) ->
                     List = base:module_info(exports),
                     case lists:keymember(C_M, 1, List) of
                         true ->
-                            case common:is_builtin_or_intance(orddict:fetch("__type__", State)) of
+                            case common:is_base_or_intance(orddict:fetch("__type__", State)) of
                                 true -> methodwrapper___new__(M, C_M, Obj);
                                 false -> wrapperdescriptor___new__(M, C_M)
                             end;
-                        false -> erlang:error("AttributeError: '" ++ Res ++ "' object has no attribute '" ++ Attribute ++ "'")
+                        false -> common:throw_except("AttributeError: (" ++ erlang:integer_to_list(Obj) 
+                                    ++ ") object has no attribute '" ++ Attribute ++ "'~n")
                     end
             end;
         is_integer(Res) ->
@@ -53,6 +54,9 @@ object___getattribute__(M, Obj, Attribute) ->
 object___setattr__(M, Obj, Attribute, ObjVal) ->
     M2 = common:set_object_attribute(M, Obj, Attribute, ObjVal),
     {M2}.
+    
+object_attr__doc__(M) ->
+    str___new__(M, "'The most base type'").
 
 % ----- instance -----
 
@@ -311,14 +315,26 @@ wrapperdescriptor___new__(Memory, FuncName) ->
     common:to_memory(Memory, State).
 
 % ----- class -----
-class___new__(Memory, ClassName, ClassContext, BeautyName) ->
+class___new__(Memory, ClassName, ClassContext, Super, BeautyName) ->
     A = orddict:new(),
     B = orddict:store("__type__", "class", A),
-    C = orddict:store("__class__", "object", B),
+    C = orddict:store("__class__", Super, B),
     D = orddict:store("class_name", ClassName, C),
     E = orddict:store("beauty_name", BeautyName, D),
     State = orddict:store("__context__", ClassContext, E),
     common:to_memory(Memory, State).
+    
+class_resolve_super(IsInClass, ClassContext, Context, SuperName) ->
+    % resolve keeping "object", "int"; and changing "Pippo" in its pointer
+    case common:is_base(SuperName) of
+        true -> SuperName;
+        false ->        
+            case IsInClass of
+                true -> common:get_from_context(ClassContext, Context, SuperName);
+                false -> common:get_from_context(Context, SuperName)
+            end
+    end.
+
 
 class___print__(Memory, Self) ->
     SelfState = common:read_memory(Memory, Self),
