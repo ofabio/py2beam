@@ -772,7 +772,7 @@ class KeywordOperator(object):
         self.is_in_class = False
 
     def __repr__(self):
-        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1] , self.obj1, self.obj2)
+        return "%s(%s, %s)" % (str(self.__class__).split(".")[-1].strip("'>") , self.obj1, self.obj2)
 
     def generate(self):
         obj1 = self.obj1
@@ -803,6 +803,16 @@ class Gt(KeywordOperator):
         super(Gt, self).__init__(obj1, obj2)
         self.keyword = "__gt__"
         
+class Lt(KeywordOperator):
+    def __init__(self, obj1, obj2):
+        super(Lt, self).__init__(obj1, obj2)
+        self.keyword = "__lt__"
+
+class Eq(KeywordOperator):
+    def __init__(self, obj1, obj2):
+        super(Eq, self).__init__(obj1, obj2)
+        self.keyword = "__eq__"
+
 class Add(KeywordOperator):
     def __init__(self, obj1, obj2):
         super(Add, self).__init__(obj1, obj2)

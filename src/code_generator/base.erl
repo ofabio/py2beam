@@ -3,7 +3,7 @@
          instance___new__/2, instance___call__/3, instance___print__/2,
          bool___new__/2, bool___print__/2, bool_obj_list_to_value_list/2,
          int___new__/2, int___add__/3, int___sub__/3, int___mul__/3, int___div__/3, 
-         int___gt__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
+         int___gt__/3, int___lt__/3, int___eq__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
          function___new__/5, function___call__/4, function___repr__/2, 
          instancemethod___new__/5, instancemethod___print__/2,
          builtin_function_or_method___new__/2, builtin_function_or_method___print__/2,
@@ -152,6 +152,34 @@ int___gt__(Memory, Self, Other) ->
             bool___new__(Memory, A > B);
         _ ->
             erlang:error("TypeError: unsupported operand type(s) for >: 'int' and '" ++
+                TypeOther ++ "'")
+    end.
+
+int___lt__(Memory, Self, Other) ->
+    SelfState = common:read_memory(Memory, Self),
+    OtherState = common:read_memory(Memory, Other),
+    TypeOther = orddict:fetch("__type__", OtherState),
+    case TypeOther of
+        "int" ->
+            A = orddict:fetch("__value__", SelfState),
+            B = orddict:fetch("__value__", OtherState),
+            bool___new__(Memory, A < B);
+        _ ->
+            erlang:error("TypeError: unsupported operand type(s) for <: 'int' and '" ++
+                TypeOther ++ "'")
+    end.
+
+int___eq__(Memory, Self, Other) ->
+    SelfState = common:read_memory(Memory, Self),
+    OtherState = common:read_memory(Memory, Other),
+    TypeOther = orddict:fetch("__type__", OtherState),
+    case TypeOther of
+        "int" ->
+            A = orddict:fetch("__value__", SelfState),
+            B = orddict:fetch("__value__", OtherState),
+            bool___new__(Memory, A =:= B);
+        _ ->
+            erlang:error("TypeError: unsupported operand type(s) for ==: 'int' and '" ++
                 TypeOther ++ "'")
     end.
 

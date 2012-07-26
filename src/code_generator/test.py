@@ -741,19 +741,49 @@ def test32():
     tree = Module([
         Print(Sub(Mul(Div(Add(Int(3),Int(7)), Int(2)), Int(5)), Int(20))),
     ])
-
+        
 def test33():
     global tree
     print '-- TEST 33 --'
     print 'output would be...'
 
+    print 10 < 3
+    print 6 < 11
+
+    print '------------'
+
+    tree = Module([
+        Print(Lt(Int(10), Int(3))),
+        Print(Lt(Int(6), Int(11))),
+    ])
+
+def test34():
+    global tree
+    print '-- TEST 34 --'
+    print 'output would be...'
+
+    print 10 == 10
+    print 6 == 11
+
+    print '------------'
+
+    tree = Module([
+        Print(Eq(Int(10), Int(10))),
+        Print(Eq(Int(6), Int(11))),
+    ])
+    
+def test35():
+    global tree
+    print '-- TEST 35 --'
+    print 'output would be...'
+
     class Pippo(object):
         def hello(self):
             print 5
-        
+
     class Pluto(Pippo):
         pass
-        
+
     p = Pluto()
     p.hello()
 
@@ -773,9 +803,9 @@ def test33():
         Assign('p', Call(Var('Pluto'), [])),
         Call(Dot(Var('p'), 'hello'), []),
     ])
-        
+
 def main():
-    test33()
+    test35()
     compose()
 
 if __name__ == '__main__':
