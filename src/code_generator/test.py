@@ -591,9 +591,9 @@ def test25():
     print '-- TEST 25 --'
     print 'output would be...'
 
-    # def hello(a,b):
-    #     return 5
-    # hello()
+    def hello(a,b):
+        return 5
+    hello()
     
     print '------------'
 

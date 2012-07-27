@@ -247,7 +247,7 @@ def p_augassign(p):
                  | SELFPOWER
                  | SELFFLOORDIVIDE"""
     raise NotImplementedError
-    p[0] = p[1]
+    # p[0] = p[1]
 
 # For normal assignments, additional restrictions enforced by the interpreter
 def p_print_stmt(p):
@@ -268,7 +268,11 @@ def p_print_stmt(p):
 def p_comma_test_plus(p):
     """comma_test_plus : COMMA test
                        | COMMA test comma_test_plus"""
-    raise NotImplementedError
+    if len(p) == 3:
+        p[0] = [p[2]]
+    else:
+        if p[3] != []:
+            p[0] = [p[2]] + p[3]
 
 def p_del_stmt(p):
     """del_stmt : DEL exprlist"""
@@ -630,9 +634,9 @@ def p_comp_op(p):
     if len(p) == 2:
         if p[1] == ">":
             p[0] = Gt
-        if p[1] == "<":
+        elif p[1] == "<":
             p[0] = Lt
-        if p[1] == "==":
+        elif p[1] == "==":
             p[0] = Eq
         else:
             raise NotImplementedError
@@ -738,7 +742,6 @@ def p_term(p):
         p[0] = prev
         
     else:
-        print "Term:", p[1]
         p[0] = p[1]
 
 def p_mult_divide_remainder_floordivide_factor_star(p):
@@ -775,7 +778,6 @@ def p_factor(p):
         raise NotImplementedError
         # p[0] = FactOp(p[1], p[2])
     else:
-        print "Factor:", p[1]
         p[0] = p[1]
 
 # ex: 2**3 = 8 (right side holds precedence)
@@ -830,7 +832,6 @@ def p_atom(p):
             # | BACKTICK testlist1 BACKTICK"""
     if len(p) == 2:
         if isinstance(p[1], int):
-            print "DEVI ARRIVARE QUI!!", p[1]
             p[0] = Int(p[1])
         elif isinstance(p[1], float):
             raise NotImplementedError
@@ -912,8 +913,8 @@ def p_trailer(p):
         #     print "Dot(%s, '%s')" % (p[-1], p[2])
         #     p[0] = Dot(p[-1], str(p[2]))
         # p[0] = ["Dot", "'%s'" % p[2]]
-        if not isinstance(p[2], list):
-            p[2] = [p[2]]
+        # if not isinstance(p[2], list):
+        #     p[2] = [p[2]]
         p[0] = [Dot, str(p[2])]
     else:
         if p[1] == '(':
@@ -938,10 +939,22 @@ def p_trailer(p):
 #     else:
 #         p[0] = p[1]
 
-def p_arglist_opt(p):
-    """arglist_opt : arglist
+def p_arglist_opt(p): # FIXME: modified
+    """arglist_opt : argument
+                   | argument COMMA arglist_opt
                    | empty"""
-    p[0] = p[1]
+    if len(p) == 2:
+        p[0] = p[1]
+    else:
+        if p[3] != []:
+            p[0] = [p[1]] + [p[3]]
+        else:
+            p[0] = [p[1]]
+
+# def p_arglist_opt(p):
+#     """arglist_opt : arglist
+#                    | empty"""
+#     p[0] = p[1]
 
 def p_subscriptlist(p):
     """subscriptlist : subscript comma_subscript_star comma_opt"""
@@ -990,7 +1003,7 @@ def p_comma_expr_star(p):
 
 def p_testlist(p):
     """testlist : test comma_test_star comma_opt"""
-    if len(p[2]) > 0:
+    if len(p[2]) == 4:
         p[0] = [p[1]] + p[2]
     else:
         p[0] = p[1]
@@ -1030,7 +1043,6 @@ def p_arglist(p):
                | argument_comma_star MULT test comma_argument_star COMMA POWER test
                | argument_comma_star POWER test"""
     if len(p) == 3:
-        # print "Arglist:", p[1], p[2]
         p[0] = p[1] + [p[2]]
     else:
         raise NotImplementedError
@@ -1039,7 +1051,10 @@ def p_argument_comma_star(p):
     """argument_comma_star : argument COMMA argument_comma_star
                            | empty"""
     if len(p) == 4:
-        p[0] = [p[1]] + p[3]
+        if p[3] != []:
+            p[0] = [p[1]] + p[3]
+        else:
+            p[0] = [p[1]]
     else:
         p[0] = p[1]
 
@@ -1122,7 +1137,10 @@ def p_empty(p):
     p[0] = []
 
 def p_error(p):
-    raise SyntaxError(p)
+    if p.value == ")":
+        print "Mistery Error"
+    else:
+        raise SyntaxError(p)
 
 class PyParser(object):
     def __init__(self, lexer):
@@ -1132,18 +1150,21 @@ class PyParser(object):
     def parse(self, source):
         self.lexer.input(source)
         result = self.parser.parse(lexer=self.lexer, debug=0)
-        print "Result:", result
         tree = Module(result)
+        print "Result:", tree
         return tree
 
 from new_scanner import PyScanner
 if __name__ == '__main__':
     scanner = PyScanner()
     code = """ 
-def hello(n):
-    print n
-
-hello(5)
+a = 6
+print a > 7
+# if a > 7:
+#     print ">7"
+# else:
+#     print "<7"
+#     print "else!"
 """
 # For('i', Range(Int(0), Int(2)), [Print(Var('i'))])
     print code
