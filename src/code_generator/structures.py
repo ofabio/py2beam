@@ -275,7 +275,7 @@ class For:
             b.module_name = self.module_name
             if b.__class__ in (Def, For, If, Class):
                 b.output = output
-                b.ancestors = self.ancestors + [self.name]
+                b.ancestors = self.ancestors
             b.is_in_class = self.is_in_class
             code += b.generate()
             if b.__class__ in (If, For):
@@ -379,7 +379,7 @@ class If:
         conds = self.conds
         f = lambda x: '%s:%d' % (self.name, x)
         f2 = lambda x: '%s_2:%d' % (self.name, x)
-        i = 0
+        i2 = 0
         
         code = [
             ('label', []),
@@ -405,16 +405,19 @@ class If:
             ]
             for b in bodies[i]:
                 b.module_name = self.module_name
-                b.is_in_class = self.is_in_class
+                b.is_in_class = self.is_in_class                
+                if b.__class__ in (Def, For, If, Class):
+                    b.output = output
+                    b.ancestors = self.ancestors
                 code += b.generate()
                 if b.__class__ in (If, For):
-                    i += 1
+                    i2 += 1
                     code += [
                         ('get_tuple_element', [('x', 0), 4, ('x', 1)]),
-                        ('is_eq_exact', [('f', f2(i)), ('x', 1), ('atom', 'jump')]),
+                        ('is_eq_exact', [('f', f2(i2)), ('x', 1), ('atom', 'jump')]),
                         ('deallocate', [heap_n]),
                         ('return', []),
-                        ('label', [f2(i)]),
+                        ('label', [f2(i2)]),
                     ]
             code += [
                 ('put_tuple', [5, ('x', 0)]),

@@ -2,5 +2,6 @@
 ✓ - implementare range come funzione builtin
 ✓ - implementare le operazioni aritmetiche principali (+, -, /, *)
 ✓ - implementare l'ereditarietà in structures.Class
-R - implementare la precedenza tra gli operatori
-R - implementare le espressioni (es. (5+4)*2 )
+✓ - implementare la precedenza tra gli operatori
+✓ - implementare le espressioni (es. (5+4)*2 )
+F - implementare True, False

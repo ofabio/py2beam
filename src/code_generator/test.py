@@ -835,8 +835,26 @@ def test36():
         Print(Call(Var('pippo'), [])),
     ])
 
+def test37():
+    global tree
+    print '-- TEST 37 --'
+    print 'output would be...'
+
+    def pippo():
+        if 1 == 1:
+            for i in range(0, 4):
+                print "ciao"
+        else:
+            print 'NO'
+
+    print pippo()
+
+    print '------------'
+
+    tree = Module([If([Eq(Int(1), Int(1))], [[For('i', Call(Var('range'), [Int( 0 ), Int(4)]), [Print(Str('ciao'))])], [Print(Str('NO'))]])])
+
 def main():
-    test36()
+    test37()
     compose()
 
 if __name__ == '__main__':
