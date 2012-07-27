@@ -932,6 +932,16 @@ class Div(KeywordOperator):
     def __init__(self, obj1, obj2):
         super(Div, self).__init__(obj1, obj2)
         self.keyword = "__div__"
+        
+class And(KeywordOperator):
+    def __init__(self, obj1, obj2):
+        super(And, self).__init__(obj1, obj2)
+        self.keyword = "__and__"
+        
+class Or(KeywordOperator):
+    def __init__(self, obj1, obj2):
+        super(Or, self).__init__(obj1, obj2)
+        self.keyword = "__or__"
                 
 class Return:
     def __init__(self, obj=None):

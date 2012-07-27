@@ -859,11 +859,33 @@ def test38():
     print 'output would be...'
 
     print True
+    print False
+    print
+    print True and False
+    print True or False
+    print False and True
+    print False or True
+    print
+    print 5 and False
+    print 5 or False
+    print 0 and True
+    print 0 or True
 
     print '------------'
 
     tree = Module([
+        Print(Var('True')),
         Print(Var('False')),
+        Print(Str("")),
+        Print(And(Var('True'), Var('False'))),
+        Print(Or(Var('True'), Var('False'))),
+        Print(And(Var('False'), Var('True'))),
+        Print(Or(Var('False'), Var('True'))),
+        Print(Str("")),
+        Print(And(Int(5), Var('False'))),
+        Print(Or(Int(5), Var('False'))),
+        Print(And(Int(0), Var('True'))),
+        Print(Or(Int(0), Var('True'))),
     ])
 
 
