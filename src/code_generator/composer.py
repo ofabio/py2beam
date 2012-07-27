@@ -52,7 +52,7 @@ class Composer:
         filename = os.path.join(self.base_path, self.module_name + ".beam")
         # be.write('code_generator/%s.beam' % self.module_name)
         be.write(filename)
-        print
+        # print
         print 'file "%s.beam" generated!' % self.module_name
 
     def utility_code(self):

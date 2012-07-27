@@ -473,8 +473,8 @@ def filter(lexer, add_endmarker = True):
         yield _new_token("ENDMARKER", lineno)
 
 class PyScanner(object):
-    def __init__(self, debug=0, optimize=0, lextab='lextab', reflags=0):
-        self.lexer = lex.lex(debug=debug, optimize=optimize, lextab=lextab, reflags=reflags)
+    def __init__(self, debug=0, optimize=0, lextab='lextab', reflags=0, errorlog=lex.NullLogger()):
+        self.lexer = lex.lex(debug=debug, optimize=optimize, lextab=lextab, reflags=reflags, errorlog=errorlog)
         self.token_stream = None
     def input(self, s, add_endmarker=True):
         self.lexer.paren_count = 0

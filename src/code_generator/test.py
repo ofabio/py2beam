@@ -847,7 +847,7 @@ def test37():
         else:
             print 'NO'
 
-    print pippo()
+    pippo()
 
     print '------------'
 
