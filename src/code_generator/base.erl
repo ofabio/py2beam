@@ -2,8 +2,10 @@
 -export([object___getattribute__/3, object___setattr__/4, object_attr__doc__/1,
          instance___new__/2, instance___call__/3, instance___print__/2,
          bool___new__/2, bool___print__/2, bool_obj_list_to_value_list/2,
+         bool___and__/3, bool___or__/3,
          int___new__/2, int___add__/3, int___sub__/3, int___mul__/3, int___div__/3, 
-         int___gt__/3, int___lt__/3, int___eq__/3, int___repr__/2, int_attr__doc__/1, int___print__/2,
+         int___gt__/3, int___lt__/3, int___eq__/3, int___repr__/2, int_attr__doc__/1,
+         int___print__/2, int___and__/3, int___or__/3,
          function___new__/5, function___call__/4, function___repr__/2, 
          instancemethod___new__/5, instancemethod___print__/2,
          builtin_function_or_method___new__/2, builtin_function_or_method___print__/2,
@@ -90,6 +92,26 @@ bool___new__(Memory, V) ->
     State = orddict:store("__value__", V, B),
     common:to_memory(Memory, State).
 
+bool___and__(Memory, Self, Other) ->
+    SelfState = common:read_memory(Memory, Self),
+    SelfValue = orddict:fetch("__value__", SelfState),
+    case SelfValue of
+        true ->
+            {Memory, Other};
+        false ->
+            {Memory, Self}
+    end.
+
+bool___or__(Memory, Self, Other) ->
+    SelfState = common:read_memory(Memory, Self),
+    SelfValue = orddict:fetch("__value__", SelfState),
+    case SelfValue of
+        true ->
+            {Memory, Self};
+        false ->
+            {Memory, Other}
+    end.
+
 bool___print__(Memory, Self) ->
     SelfState = common:read_memory(Memory, Self),
     Value = orddict:fetch("__value__", SelfState),
@@ -133,6 +155,26 @@ int_binary_op(Memory, Self, Other, Op, LambdaOp) ->
         _ ->
             erlang:error("TypeError: unsupported operand type(s) for " ++ Op ++ ": 'int' and '" ++
                 TypeOther ++ "'")
+    end.
+    
+int___and__(Memory, Self, Other) ->
+    SelfState = common:read_memory(Memory, Self),
+    SelfValue = orddict:fetch("__value__", SelfState),
+    if
+        SelfValue == 0 ->
+            {Memory, Self};
+        SelfValue /= 0 ->
+            {Memory, Other}
+    end.
+
+int___or__(Memory, Self, Other) ->
+    SelfState = common:read_memory(Memory, Self),
+    SelfValue = orddict:fetch("__value__", SelfState),
+    if
+        SelfValue == 0 ->
+            {Memory, Other};
+        SelfValue /= 0 ->
+            {Memory, Self}
     end.
 
 int_attr__doc__(M) ->
