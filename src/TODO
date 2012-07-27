@@ -5,3 +5,6 @@
 ✓ - implementare la precedenza tra gli operatori
 ✓ - implementare le espressioni (es. (5+4)*2 )
 F - implementare True, False
+F - None
+F - aggiungere metodi logici agli interi e logici e matematici ai bool
+F - aggiungere qualche builtin

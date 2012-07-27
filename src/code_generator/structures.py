@@ -738,7 +738,8 @@ class Str:
         return code
 
 class Var:
-    builtins = ["range"]
+    builtin_function_or_method = ['range']
+    # special_base_types = ['True', 'False']
     
     def __init__(self, name):
         self.module_name = None
@@ -749,12 +750,37 @@ class Var:
         return "%s(%s)" % (str(self.__class__).split(".")[-1] , self.name)
 
     def generate(self):
+        name = self.name
         code = list()
-        # caso builtin
-        if self.name in Var.builtins:
+        # caso special_base_types
+        
+        if name == 'True':
             code += [
                 ('move', [('y', heap_memory), ('x', 0)]),
-                ('move', [('literal', self.name), ('x', 1)]),
+                ('move', [('atom', 'true'), ('x', 1)]),
+                ('call_ext', [2, ('extfunc', 'base:bool___new__/2')]),
+                # valore di ritorno {Memory, N}
+                ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+                ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+            ]
+            return code
+            
+        if name == 'False':
+            code += [
+                ('move', [('y', heap_memory), ('x', 0)]),
+                ('move', [('atom', 'false'), ('x', 1)]),
+                ('call_ext', [2, ('extfunc', 'base:bool___new__/2')]),
+                # valore di ritorno {Memory, N}
+                ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+                ('get_tuple_element', [('x', 0), 1, ('x', 0)]),
+            ]
+            return code
+        
+        # caso builtin_function_or_method
+        if self.name in Var.builtin_function_or_method:
+            code += [
+                ('move', [('y', heap_memory), ('x', 0)]),
+                ('move', [('literal', name), ('x', 1)]),
                 ('call_ext', [2, ('extfunc', 'base:builtin_function_or_method___new__/2')]),
                 # valore di ritorno {Memory, N}
                 ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
@@ -766,13 +792,13 @@ class Var:
             code += [
                 ('move', [('y', heap_class_context), ('x', 0)]),
                 ('move', [('y', heap_context), ('x', 1)]),
-                ('move', [('literal', self.name), ('x', 2)]),
+                ('move', [('literal', name), ('x', 2)]),
                 ('call_ext', [3, ('extfunc', 'common:get_from_context/3')]),
             ]
         else:
             code += [
                 ('move', [('y', heap_context), ('x', 0)]),
-                ('move', [('literal', self.name), ('x', 1)]),
+                ('move', [('literal', name), ('x', 1)]),
                 ('call_ext', [2, ('extfunc', 'common:get_from_context/2')]),
             ]
         #code += print_register(('x', 0))

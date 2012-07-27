@@ -853,8 +853,22 @@ def test37():
 
     tree = Module([If([Eq(Int(1), Int(1))], [[For('i', Call(Var('range'), [Int( 0 ), Int(4)]), [Print(Str('ciao'))])], [Print(Str('NO'))]])])
 
+def test38():
+    global tree
+    print '-- TEST 38 --'
+    print 'output would be...'
+
+    print True
+
+    print '------------'
+
+    tree = Module([
+        Print(Var('False')),
+    ])
+
+
 def main():
-    test37()
+    test38()
     compose()
 
 if __name__ == '__main__':
