@@ -256,7 +256,7 @@ def p_print_stmt(p):
                   | PRINT RIGHTSHIFT test
                   | PRINT RIGHTSHIFT test comma_test_plus comma_opt"""
     if len(p) == 2:
-        p[0] = Print("")
+        p[0] = Print(Str(""))
     elif len(p) == 5:
         if p[3] == [] and p[4] == []:
             p[0] = Print(p[2])
@@ -1143,9 +1143,9 @@ def p_error(p):
         raise SyntaxError(p)
 
 class PyParser(object):
-    def __init__(self, lexer):
+    def __init__(self, lexer, errorlog=yacc.NullLogger()):
         self.lexer = lexer
-        self.parser = yacc.yacc(start="file_input", outputdir=dirname(__file__), debug=0)
+        self.parser = yacc.yacc(start="file_input", outputdir=dirname(__file__), debug=0, errorlog=errorlog)
 
     def parse(self, source):
         self.lexer.input(source)
@@ -1158,6 +1158,7 @@ from new_scanner import PyScanner
 if __name__ == '__main__':
     scanner = PyScanner()
     code = """ 
+print
 a = 6
 print a > 7
 # if a > 7:
