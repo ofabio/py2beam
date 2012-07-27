@@ -95,6 +95,8 @@ class Def:
         body = self.body
         params = self.params
         htb = lambda x: heap_temp_base + x
+        f = lambda x: '%s:%d' % (self.name, x)
+        i = 0
 
         code = [
             ('label', []),
@@ -132,7 +134,26 @@ class Def:
                 b.output = output
                 b.ancestors = self.ancestors + [self.name]
             b.is_in_class = False
+            b.is_in_def = True
             code += b.generate()
+            # if contains_return(b):
+            if b.__class__ in (If, For):
+                i += 1
+                code += [
+                    ('get_tuple_element', [('x', 0), 4, ('x', 1)]),
+                    ('is_eq_exact', [('f', f(i)), ('x', 1), ('atom', 'jump')]),
+                    # ('get_tuple_element', [('x', 0), 0, ('x', 1)]),
+                    # ('get_tuple_element', [('x', 0), 3, ('x', 2)]),
+                    # ('put_tuple', [5, ('x', 0)]),
+                    # ('put', [('x', 1)]),
+                    # ('put', [('atom', 'empty')]),
+                    # ('put', [('atom', 'empty')]),
+                    # ('put', [('x', 2)]),
+                    # ('put', [('atom', 'nojump')]),
+                    ('deallocate', [heap_n]),
+                    ('return', []),
+                    ('label', [f(i)]),
+                ]
         
         code += [
             #destroy_locals
@@ -142,9 +163,12 @@ class Def:
             ('move', [('x', 0), ('y', heap_memory)]),
         ]
         code += [
-            ('put_tuple', [2, ('x', 0)]),
+            ('put_tuple', [5, ('x', 0)]),
             ('put', [('y', heap_memory)]),
             ('put', [('atom', 'None')]),
+            ('put', [('atom', 'empty')]),
+            ('put', [('atom', 'empty')]),
+            ('put', [('atom', 'nojump')]),
             ('deallocate', [heap_n]),
             ('return', []),
         ]
@@ -220,9 +244,12 @@ class For:
         output = self.output
         item = self.item
         body = self.body
+        f = lambda x: '%s:%d' % (self.name, x)
+        f2 = lambda x: '%s_2:%d' % (self.name, x)
+        i = 0
         
         code = [
-            ('label', ['%s:%d' % (self.name, 0)]),
+            ('label', [f(0)]),
             ('func_info', [('atom', module_name), ('atom', self.name), 4]),
             ('label', []),
             
@@ -238,7 +265,7 @@ class For:
             # ('x', 0) -> lista su cui fare il for
         ]
         code += [
-            ('is_nonempty_list', [('f', '%s:%d' % (self.name, 1)), ('x', 0)]),
+            ('is_nonempty_list', [('f', f(1)), ('x', 0)]),
             ('get_list', [('x', 0), ('x', 0), ('y', heap_aux)]),
         ]
         #code += print_register(('x', 0))
@@ -251,6 +278,15 @@ class For:
                 b.ancestors = self.ancestors + [self.name]
             b.is_in_class = self.is_in_class
             code += b.generate()
+            if b.__class__ in (If, For):
+                i += 1
+                code += [
+                    ('get_tuple_element', [('x', 0), 4, ('x', 1)]),
+                    ('is_eq_exact', [('f', f2(i)), ('x', 1), ('atom', 'jump')]),
+                    ('deallocate', [heap_n]),
+                    ('return', []),
+                    ('label', [f2(i)]),
+                ]
         
         code += [
             ('move', [('y', heap_memory), ('x', 0)]),
@@ -258,17 +294,19 @@ class For:
             ('move', [('y', heap_class_context), ('x', 2)]),
             ('move', [('y', heap_aux), ('x', 3)]),
             ('call_last', [4, (module_name, self.name + '/4'), heap_n]),
-            ('label', ['%s:%d' % (self.name, 1)]),
+            ('label', [f(1)]),
             ##exdeall
-            ('is_nil', [('f', '%s:%d' % (self.name, 0)), ('x', 0)]),
+            ('is_nil', [('f', f(0)), ('x', 0)]),
             # ritorna una tupla: {Memory, Context}
         ]
         code += [
-            ('put_tuple', [3, ('x', 3)]),
+            ('put_tuple', [5, ('x', 0)]),
             ('put', [('y', heap_memory)]),
+            ('put', [('atom', 'empty')]),
             ('put', [('y', heap_context)]),
             ('put', [('y', heap_class_context)]),
-            ('move', [('x', 3), ('x', 0)]),
+            ('put', [('atom', 'nojump')]),
+            # ('move', [('x', 5), ('x', 0)]),
             ('deallocate', [heap_n]),
             ('return', []),
         ]
@@ -298,6 +336,7 @@ class For:
             code += [('move', [('y', heap_class_context), ('x', 2)])]
         else:
             code += [('move', [('atom', 'empty'), ('x', 2)])]
+            
         code += [
             ('move', [('x', 0), ('x', 3)]),
             ('move', [('y', heap_memory), ('x', 0)]),
@@ -305,10 +344,11 @@ class For:
             ('call', [4, (module_name, '%s/%d' % (self.name, 4))]),
             ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
         ]
+        # code += print_register(('x', 0))
         if is_in_class:
-            code += [('get_tuple_element', [('x', 0), 2, ('y', heap_class_context)])]
+            code += [('get_tuple_element', [('x', 0), 3, ('y', heap_class_context)])]
         else:
-            code += [('get_tuple_element', [('x', 0), 1, ('y', heap_context)])]
+            code += [('get_tuple_element', [('x', 0), 2, ('y', heap_context)])]
         return code
 
 
@@ -338,6 +378,8 @@ class If:
         bodies = self.bodies
         conds = self.conds
         f = lambda x: '%s:%d' % (self.name, x)
+        f2 = lambda x: '%s_2:%d' % (self.name, x)
+        i = 0
         
         code = [
             ('label', []),
@@ -365,11 +407,22 @@ class If:
                 b.module_name = self.module_name
                 b.is_in_class = self.is_in_class
                 code += b.generate()
+                if b.__class__ in (If, For):
+                    i += 1
+                    code += [
+                        ('get_tuple_element', [('x', 0), 4, ('x', 1)]),
+                        ('is_eq_exact', [('f', f2(i)), ('x', 1), ('atom', 'jump')]),
+                        ('deallocate', [heap_n]),
+                        ('return', []),
+                        ('label', [f2(i)]),
+                    ]
             code += [
-                ('put_tuple', [3, ('x', 0)]),
+                ('put_tuple', [5, ('x', 0)]),
                 ('put', [('y', heap_memory)]),
+                ('put', [('atom', 'empty')]),
                 ('put', [('y', heap_context)]),
                 ('put', [('y', heap_class_context)]),
+                ('put', [('atom', 'nojump')]),
                 ('deallocate', [heap_n]),
                 ('return', []),
                 ('label', [f(i)]),
@@ -382,10 +435,12 @@ class If:
                 code += b.generate()
         
         code += [
-            ('put_tuple', [3, ('x', 0)]),
+            ('put_tuple', [5, ('x', 0)]),
             ('put', [('y', heap_memory)]),
+            ('put', [('atom', 'empty')]),
             ('put', [('y', heap_context)]),
             ('put', [('y', heap_class_context)]),
+            ('put', [('atom', 'nojump')]),
             ('deallocate', [heap_n]),
             ('return', []),
         ]
@@ -410,18 +465,20 @@ class If:
             ('call_ext', [2, ('extfunc', 'base:bool_obj_list_to_value_list/2')]),
             ('move', [('x', 0), ('x', 3)]),
         ]
+        # code += print_register(('y', heap_context))
         code += [
             ('move', [('y', heap_memory), ('x', 0)]),
             ('move', [('y', heap_context), ('x', 1)]),
             ('move', [('y', heap_class_context), ('x', 2)]),
-            ('call', [4, (module_name, '%s/%d' % (self.name, 4))]),        
-            ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
+            ('call', [4, (module_name, '%s/%d' % (self.name, 4))]),
         ]
+        code += [('get_tuple_element', [('x', 0), 0, ('y', heap_memory)])]
         if self.is_in_class:
-            code += [('get_tuple_element', [('x', 0), 2, ('y', heap_class_context)])]
+            code += [('get_tuple_element', [('x', 0), 3, ('y', heap_class_context)])]
         else:
-            code += [('get_tuple_element', [('x', 0), 1, ('y', heap_context)])]
-            
+            code += [('get_tuple_element', [('x', 0), 2, ('y', heap_context)])]
+        
+        # code += print_register(('y', heap_context))    
         return code
 
 class Class:
@@ -852,6 +909,7 @@ class Return:
         self.module_name = None
         self.obj = obj
         self.is_in_class = False
+        self.is_in_def = False
         
     def __repr__(self):
         return "%s(%s)" % (str(self.__class__).split(".")[-1] , self.obj)
@@ -878,9 +936,17 @@ class Return:
             ('move', [('x', 0), ('y', heap_memory)]),
         ]
         code += [
-            ('put_tuple', [2, ('x', 0)]),
+            ('put_tuple', [5, ('x', 0)]),
             ('put', [('y', heap_memory)]),
             ('put', [('y', htb(0))]),
+            ('put', [('atom', 'empty')]),
+            ('put', [('atom', 'empty')]),
+        ]
+        if self.is_in_def:
+            code += [('put', [('atom', 'nojump')])]
+        else:
+            code += [('put', [('atom', 'jump')])]
+        code += [
             ('deallocate', [heap_n]),
             ('return', []),
         ]

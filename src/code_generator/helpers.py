@@ -9,6 +9,7 @@ Copyright (c) 2012 ofabio. All rights reserved.
 
 import sys
 import os
+import structures
 
 heap_n = 7
 heap_memory = 0
@@ -62,3 +63,14 @@ def assign(var, is_in_class=False):
         ('get_tuple_element', [('x', 0), 0, ('y', heap_memory)]),
         ('get_tuple_element', [('x', 0), 1, ('y', context)]),
     ]
+    
+
+def contains_return(b):
+    if b.__class__ == structures.If:
+        for body in b.bodies:
+            if any([child.__class__ == structures.Return for child in body]):
+                return
+    if b.__class__ == structures.For:
+        return any([child.__class__ == structures.Return for child in b.body])
+        
+    return False

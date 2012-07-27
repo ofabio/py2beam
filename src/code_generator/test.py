@@ -57,7 +57,7 @@ def test2():
 
     tree = Module([
         Assign('i', Int(1)),
-        For('i', Range(Var('i'), Int(3)), [
+        For('i', Call(Var('range'), [Int(1), Int(3)]), [
             Print(Var('i')),
         ]),
         Print(Var('i')),
@@ -777,15 +777,16 @@ def test35():
     print '-- TEST 35 --'
     print 'output would be...'
 
-    class Pippo(object):
-        def hello(self):
-            print 5
+    class A(object):
+        class Pippo(object):
+            def hello(self):
+                print 5
 
-    class Pluto(Pippo):
-        pass
+        class Pluto(Pippo):
+            pass
 
-    p = Pluto()
-    p.hello()
+        p = Pluto()
+        p.hello()
 
     print '------------'
 
@@ -795,20 +796,50 @@ def test35():
                 Print(Int(5)),
             ]),
         ]),
+        Debug('context'),
         Class('Pluto', [
             # Def('hello', ['self'], [
             #     Print(Int(5)),
             # ]),
         ], 'Pippo'),
-        
+    
         Assign('p', Call(Var('Pluto'), [])),
         Call(Dot(Var('p'), 'hello'), []),
     ])
+    
+def test36():
+    global tree
+    print '-- TEST 34 --'
+    print 'output would be...'
+    
+    def pippo():
+        for i in range(1, 20):
+            if(i == 5):
+                return i
+            else:
+                print i
+        
+    print pippo()
+    
+    print '------------'
+    
+    tree = Module([
+        Def('pippo', [], [
+            For('i', Call(Var('range'), [Int(1), Int(20)]), [
+                If([Eq(Var('i'), Int(5))], [
+                    [Return(Int(5))],
+                    [Print(Var('i'))],
+                ]),
+            ]),
+        ]),
+        Print(Call(Var('pippo'), [])),
+    ])
 
 def main():
-    test35()
+    test36()
     compose()
 
 if __name__ == '__main__':
     main()
 
+# if_con_return_dentro
