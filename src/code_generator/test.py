@@ -870,6 +870,14 @@ def test38():
     print 5 or False
     print 0 and True
     print 0 or True
+    print
+    class Pippo(object):
+        pass
+    class Pluto(object):
+        pass
+    
+    print Pippo() and Pluto()
+    print Pippo() or Pluto()
 
     print '------------'
 
@@ -886,6 +894,11 @@ def test38():
         Print(Or(Int(5), Var('False'))),
         Print(And(Int(0), Var('True'))),
         Print(Or(Int(0), Var('True'))),
+        Print(Str("")),
+        Class('Pippo', [], 'object'),
+        Class('Pluto', [], 'int'),
+        Print(And(Call(Var('Pippo'), []), Call(Var('Pluto'), []))),
+        Print(Or(Call(Var('Pippo'), []), Call(Var('Pluto'), []))),        
     ])
 
 

@@ -1,5 +1,6 @@
 -module(base).
 -export([object___getattribute__/3, object___setattr__/4, object_attr__doc__/1,
+         object___and__/3, object___or__/3,
          instance___new__/2, instance___call__/3, instance___print__/2,
          bool___new__/2, bool___print__/2, bool_obj_list_to_value_list/2,
          bool___and__/3, bool___or__/3,
@@ -59,6 +60,12 @@ object___setattr__(M, Obj, Attribute, ObjVal) ->
     
 object_attr__doc__(M) ->
     str___new__(M, "'The most base type'").
+    
+object___and__(Memory, Self, Other) ->
+    {Memory, Other}.
+
+object___or__(Memory, Self, Other) ->
+    {Memory, Self}.
 
 % ----- instance -----
 

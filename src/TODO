@@ -6,5 +6,5 @@
 ✓ - implementare le espressioni (es. (5+4)*2 )
 ✓ - implementare True, False
 F - None
-F - aggiungere metodi logici agli interi e logici e matematici ai bool
+✓ - aggiungere metodi logici agli interi ai bool e agli oggetti (matematici ai bool tralasciato)
 F - aggiungere qualche builtin
