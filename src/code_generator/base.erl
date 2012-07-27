@@ -212,7 +212,7 @@ str___add__(Memory, Self, Other) ->
         "str" ->
             A = orddict:fetch("__value__", SelfState),
             B = orddict:fetch("__value__", OtherState),
-            int___new__(Memory, A ++ B);
+            str___new__(Memory, A ++ B);
         _ ->
             erlang:error("TypeError: unsupported operand type(s) for +: 'str' and '" ++
                 TypeOther ++ "'")
