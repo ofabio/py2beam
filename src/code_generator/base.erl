@@ -61,10 +61,10 @@ object___setattr__(M, Obj, Attribute, ObjVal) ->
 object_attr__doc__(M) ->
     str___new__(M, "'The most base type'").
     
-object___and__(Memory, Self, Other) ->
+object___and__(Memory, _, Other) ->
     {Memory, Other}.
 
-object___or__(Memory, Self, Other) ->
+object___or__(Memory, Self, _) ->
     {Memory, Self}.
 
 % ----- instance -----

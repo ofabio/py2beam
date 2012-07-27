@@ -423,8 +423,8 @@ print_standard(Type, M, Obj) ->
 
 throw_except(Msg) ->
     io:format(Msg, []),
-    erlang:exit(0).
-    % halt().
+    % erlang:exit(0).
+    halt().
                 
     
 is_base_or_intance(A) ->
