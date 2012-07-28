@@ -28,7 +28,9 @@ def main():
             if l.find("print '------------'") != -1:
                 rec = False
                 print "writing test", test_num
-                with open(os.path.join(DESTFOLDER, "test%s.py" % test_num), 'w') as newtest:
+                test_num_str = test_num
+                if len(str(test_num)) == 1: test_num_str = "0%d" % test_num
+                with open(os.path.join(DESTFOLDER, "test%s.py" % test_num_str), 'w') as newtest:
                     newtest.write(test_body)
                 test_body = ""
                 test_num += 1

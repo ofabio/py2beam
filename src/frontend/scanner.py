@@ -4,7 +4,7 @@
 scanner.py
 """
 
-import ply.lex as lex
+from ply import lex
 from ply.lex import TOKEN
 
 # List of reserved tokens.
@@ -39,67 +39,242 @@ reserved = {
    'return' : 'RETURN',
    'def' : 'DEF',
    'lambda' : 'LAMBDA',
-   'try' : 'TRY'
+   'try' : 'TRY',
 }
 
-reserved = {
-    'def' : 'DEF',
-    'if' : 'IF',
-    'return' : 'RETURN',
-    'print' : 'PRINT'
-    }
-
-# Literal characters returnerd 'as is'
-#literals = [ '+','-','*','/' ]
-
 # List of token names.   This is always required
-
-tokens = [
-          'NAME',
-          'NUMBER',  # Python decimals
-          'STRINGLITERAL',  # single quoted strings only; syntax of raw strings
-          'LPAREN',
-          'RPAREN',
-          'COLON',
-          'EQUAL',
-          'ASSIGN',
-          'LESSTHAN',
-          'MORETHAN',
+tokens = [#operators
           'PLUS',
           'MINUS',
           'MULT',
+          'POWER',
           'DIVIDE',
-          'WS',
-          'NEWLINE',
+          'FLOORDIVIDE',
+          'REMAINDER',
+          'LEFTSHIFT',
+          'RIGHTSHIFT',
+          'BITWISEAND',
+          'BITWISEOR',
+          'BITWISEXOR',
+          'NOTBITS',
+          'LESSTHAN',
+          'MORETHAN',
+          'LESSEQTHAN',
+          'MOREEQTHAN',
+          'EQUAL',
+          'NOTEQUAL',
+          #delimiters
+          'LPAREN',
+          'RPAREN',
+          'LSQUAREBKT',
+          'RSQUAREBKT',
+          'LCURLYBKT',
+          'RCURLYBKT',
+          'AT',
           'COMMA',
+          'COLON',
+          'PERIOD',
+          #'ELLIPSIS',
+          'BACKTICK',
+          'ASSIGN',
           'SEMICOLON',
+          #operators & delimiters
+          'SELFPLUS',
+          'SELFMINUS',
+          'SELFMULT',
+          'SELFPOWER',
+          'SELFDIVIDE',
+          'SELFFLOORDIVIDE',
+          'SELFREMAINDER',
+          'SELFLEFTSHIFT',
+          'SELFRIGHTSHIFT',
+          'SELFBITWISEAND',
+          'SELFBITWISEOR',
+          'SELFBITWISEXOR',
+          #literals
+          'NUMBER',
+          # 'INTLONGLITERAL',
+          # 'FLOATLITERAL',
+          'STRING',
+
+          'NAME',
+          'NEWLINE',
+          'WS',
           'INDENT',
           'DEDENT',
           'ENDMARKER',
           ] + list(reserved.values())
+
+digit            = '[0-9]'
+uppercase        = '[A-Z]'
+lowercase        = '[a-z]'
+letter           = lowercase + '|' + uppercase
+identifier       = "(" + letter + "|_)(" + letter + "|" + digit + "|_)*"
+
+exponent        = "(e|E)[+|-]" + digit + "+"
+fraction        = "\." + digit + "+"
+intpart         = digit + "+"
+pointfloat      = intpart + fraction + "|" + intpart + "\."
+exponentfloat   = "(" + intpart + "|" + pointfloat + ")" + exponent
+floatnumber     = "(" + pointfloat + ")|(" + exponentfloat + ")"
+#    floatnumber     = "([0-9]+[.][0-9]+)"
+#floatnumber     = "([0-9]*\.[0-9]+)"   #"[0-9]+\.[0-9]+|[0-9]+.|([0-9]+|[[0-9]+].[0-9]+|[0-9]+.)(e|E)[+|-][0-9]+"
+#floatnumber     = "[0-9]+\.[0-9]+|[0-9]+\.|([0-9]+|[0-9]+\.[0-9]+|[0-9]+\.)(e|E)[+|-][0-9]+"
+
+# escapeseq           = "\\" + letter
+# longstringchar      = "[^\\\\]"
+# shortstringchar     = r"[^\\n']"
+# longstringitem      = longstringchar + "|" + escapeseq
+# shortstringitem     = shortstringchar + "|" + escapeseq
+# longstring          = "'''" + longstringitem + "*'''|\"\"\"" + longstringitem + "*\"\"\""
+# shortstring         = "'" + shortstringitem + "*'|\"" + shortstringitem + "*\""
+# stringprefix        = "r|u|ur|R|U|UR|Ur|uR|b|B|br|Br|bR|BR"
+# stringliteral       = "[" + stringprefix + "]" + "(" + shortstring + "|" + longstring + ")"
+#stringliteral       = r"('[^\\n']|\*'|\"[^\n\']|\*\"|'''[^\]|\*'''|\"\"\"[^\]|\*\"\"\")"
+# stringliteral       = "'([^\\\n']|\\[a-zA-Z0-9\\])*'|\"([^\\\n']|\\[a-zA-Z0-9\\])*\""
+stringliteral = (r"""
+[uU]?[rR]?
+  (?:              # Single-quote (') strings
+  '''(?:                 # Triple-quoted can contain...
+      [^'\\]             | # a non-quote, non-backslash
+      \\.                | # a backslash followed by something
+      '{1,2}(?!')          # one or two quotes
+    )*''' |
+  '(?:                   # Non-triple quoted can contain...
+     [^'\n\\]            | # non-quote, non-backslash, non-NL
+     \\.                   # a backslash followed by something
+  )*' | """+
+r'''               # Double-quote (") strings
+  """(?:                 # Triple-quoted can contain...
+      [^"\\]             | # a non-quote, non-backslash
+      \\.                | # a backslash followed by something
+      "{1,2}(?!")          # one or two quotes
+    )*""" |
+  "(?:                   # Non-triple quoted can contain...
+     [^"\n\\]            | # non-quote, non-backslash, non-NL
+     \\.                   # a backslash followed by something
+  )*"
+)''')
+
+# stringliteral = (r"""
+# [uU]?[rR]?
+#   (?:              # Single-quote (') strings
+#   '(?:                   # Non-triple quoted can contain...
+#      [^'\n\\]            | # non-quote, non-backslash, non-NL
+#      \\.                   # a backslash followed by something
+#   )*' | """+
+# r'''               # Double-quote (") strings
+#   "(?:                   # Non-triple quoted can contain...
+#      [^"\n\\]            | # non-quote, non-backslash, non-NL
+#      \\.                   # a backslash followed by something
+#   )*"
+# )''')
+
+
+hexdigit        = r"\d|[a-f]|[A-F]"
+bindigit        = r"0|1"
+octdigit        = r"[0-7]"
+nonzerodigit    = r"[1-9]"
+bininteger      = r"0(b|B)" + bindigit + r"+"
+hexinteger      = r"0(x|X)" + hexdigit + r"+"
+octinteger      = r"0(o|O)" + octdigit + r"+|0" + octdigit + r"+"
+decimalinteger  = nonzerodigit + digit + r"*|0"
+integer         = decimalinteger + r"|" + octinteger + r"|" + hexinteger + r"|" + bininteger
+longinteger     = integer + r"(l|L)"
 
 def t_NUMBER(t):
     r"""(\d+(\.\d*)?|\.\d+)([eE][-+]? \d+)?"""
     t.value = eval(t.value)
     return t
 
-def t_STRINGLITERAL(t):
-    r"'([^\\']+|\\'|\\\\)*'"
+@TOKEN(stringliteral)
+def t_STRING(t):
+    # r"'([^\\']+|\\'|\\\\)*'"
     t.value = t.value[1:-1].decode("string-escape")
     return t
 
-t_COLON = r':'
-t_EQUAL = r'=='
-t_ASSIGN = r'='
-t_LESSTHAN = r'<'
-t_MORETHAN = r'>'
-t_PLUS = r'\+'
-t_MINUS = r'-'
-t_MULT = r'\*'
-t_DIVIDE = r'/'
-t_COMMA = r','
-t_SEMICOLON = r';'
+# @TOKEN(integer)
+# def t_INTLONGLITERAL(t):
+#     t.value = eval(t.value)
+#     return t
+#
+# @TOKEN(floatnumber)
+# def t_FLOATLITERAL(t):
+#     t.value = float(t.value)
+#     return t
+#
+# def t_IMGLITERAL(t):
+#     '''
+#     imagnumber ::=  (floatnumber | intpart) ("j" | "J")
+#     '''
+#     pass
 
+# Regular expression rules for simple tokens
+''' Operators
++       -       *       **      /       //      %
+<<      >>      &       |       ^       ~
+<       >       <=      >=      ==      !=      <>
+'''
+
+t_LSQUAREBKT    = r'\['
+t_RSQUAREBKT    = r'\]'
+t_LCURLYBKT     = r'{'
+t_RCURLYBKT     = r'}'
+t_AT            = r'@'
+t_COMMA         = r','
+t_COLON         = r':'
+t_PERIOD        = r'\.'
+t_BACKTICK      = r'`'
+#t_ELLIPSIS      = r'...'
+t_ASSIGN        = r'='
+t_SEMICOLON     = r';'
+
+
+t_PLUS          = r'\+'
+t_MINUS         = r'-'
+t_MULT          = r'\*'
+t_POWER         = r'\*\*'
+t_DIVIDE        = r'/'
+t_FLOORDIVIDE   = r'//'
+t_REMAINDER     = r'%'
+t_LEFTSHIFT     = r'<<'
+t_RIGHTSHIFT    = r'>>'
+t_BITWISEAND    = r'&'
+t_BITWISEOR     = r'\|'
+t_BITWISEXOR    = r'\^'
+t_NOTBITS       = r'~'
+t_LESSTHAN      = r'<'
+t_MORETHAN      = r'>'
+t_LESSEQTHAN    = r'<='
+t_MOREEQTHAN    = r'>='
+t_EQUAL         = r'=='
+t_NOTEQUAL      = r'\!=|<>'
+
+""" Delimiters
+(       )       [       ]       {       }      @
+,       :       .       `       =       ;
++=      -=      *=      /=      //=     %=
+&=      |=      ^=      >>=     <<=     **=
+"""
+
+t_SELFPLUS          = r'\+='
+t_SELFMINUS         = r'-='
+t_SELFMULT         = r'\*='
+t_SELFPOWER         = r'\*\*='
+t_SELFDIVIDE        = r'/='
+t_SELFFLOORDIVIDE   = r'//='
+t_SELFREMAINDER     = r'%='
+t_SELFLEFTSHIFT     = r'<<='
+t_SELFRIGHTSHIFT    = r'>>='
+t_SELFBITWISEAND    = r'&='
+t_SELFBITWISEOR     = r'\|='
+t_SELFBITWISEXOR    = r'\^='
+
+
+# t_NEWLINE           = r'\\n'
+# t_ENDMARKER         = r'EOF'
+
+# @TOKEN(identifier)
 def t_NAME(t):
     r'[a-zA-Z_][a-zA-Z0-9_]*'
     # Look up symbol table information and return a tuple
@@ -298,8 +473,8 @@ def filter(lexer, add_endmarker = True):
         yield _new_token("ENDMARKER", lineno)
 
 class PyScanner(object):
-    def __init__(self, debug=0, optimize=0, lextab='lextab', reflags=0):
-        self.lexer = lex.lex(debug=debug, optimize=optimize, lextab=lextab, reflags=reflags)
+    def __init__(self, debug=0, optimize=0, lextab='lextab', reflags=0, errorlog=lex.NullLogger()):
+        self.lexer = lex.lex(debug=debug, optimize=optimize, lextab=lextab, reflags=reflags, errorlog=errorlog)
         self.token_stream = None
     def input(self, s, add_endmarker=True):
         self.lexer.paren_count = 0

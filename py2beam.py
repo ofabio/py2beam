@@ -4,9 +4,18 @@
 import sys, os, shutil
 import getopt
 from subprocess import call
-from frontend.new_scanner import PyScanner
-from frontend.new_parser import PyParser
-from code_generator.composer import Composer
+
+try:
+    from py2beam.config import *
+    from py2beam.frontend.scanner import PyScanner
+    from py2beam.frontend.parser import PyParser
+    from py2beam.code_generator.composer import Composer
+except Exception as e:
+    print ">>", e
+    from src.config import *
+    from src.frontend.scanner import PyScanner
+    from src.frontend.parser import PyParser
+    from src.code_generator.composer import Composer
 
 help_message = '''\
 Usage: py2beam.py [options] <source file>
@@ -30,7 +39,7 @@ def main(argv=None):
     output = None
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "eho:v", ["help", "output=", "execute"])
+            opts, args = getopt.getopt(argv[1:], "ehoi:v", ["help", "output=", "execute", "initialize"])
         except getopt.error, msg:
             raise Usage(msg)
         # option processing
@@ -43,6 +52,11 @@ def main(argv=None):
                 output = value
             if option in ("-e", "--execute"):
                 execute = True
+            if option in ("-i", "--initialize"):
+                scanner = PyScanner()
+                parser = PyParser(lexer=scanner)
+                print "initialized for first use..."
+                sys.exit(0)
         
         if args == []:
             raise Usage(help_message)
@@ -70,7 +84,7 @@ def main(argv=None):
                 for lib in ("base", "common", "builtins"):
                     # if not os.path.exists(os.path.join(build_dir, "%s.beam" % lib)):
                     # print "inserting %s lib..." % lib
-                    shutil.copyfile(os.path.join("src", "code_generator", "%s.beam" % lib), os.path.join(build_dir, "%s.beam" % lib))
+                    shutil.copyfile(os.path.join(TARGET, SRC_DIR, CG_DIR, "%s.beam" % lib), os.path.join(build_dir, "%s.beam" % lib))
                 composer = Composer(build_dir, beam_name, tree, verbose)
                 composer.generate()
                 composer.write()

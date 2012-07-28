@@ -1,1 +1,76 @@
-It is a python compiler for the erlang virtual machine BEAM.
+================================================================================
+                               P  y  2  B  e  a  m
+================================================================================
+
+    Py2Beam is a python compiler for the Erlang Virtual Machine BEAM.
+
+================================================================================
+    I  N  S  T  A  L  L
+================================================================================
+
+    1. Unpack the source zip.   
+    2. `cd` into to the new directory 
+    3. Run `make` to build some erlang dependencies
+    4. Run `sudo make install` to install py2beam in /usr/local/bin.
+
+    Optional:
+    5. Run `make test` to run tests.
+
+================================================================================
+    U  S  E
+================================================================================
+
+    1. Run `py2beam.py` <pythonsourcefile>
+
+    Optional:
+    2. Run `py2beam.py -h` to show a quick help.
+
+================================================================================
+    R  E  S  O  U  R  C  E  S
+================================================================================
+
+    [0] Official Website of the Python Programming Language:
+        http://python.org/
+
+    [1] Official Website of the Erlang Programming Language: 
+        http://http://www.erlang.org/
+
+    [2] Erlang Virtual Machine opcodes list.
+        http://azunyanmoe.wordpress.com/2011/03/30/erlang-vm-opcodes/
+
+    [3] PLY (Python Lex-Yacc) home page.
+        http://www.dabeaz.com/ply/
+
+
+================================================================================
+    D  E  V  E  L  O  P  M  E  N  T
+================================================================================
+
+    An up to date git repository of the source can be found at the github
+    code page:
+
+        https://github.com/ofabio/py2beam/
+
+================================================================================
+    L  I  C  E  N  S  E
+================================================================================
+
+    Py2Beam - Python compiler for the Erlang Virtual Machine BEAM, 
+    Copyright (C) 2012-2013, Fabio Pricoco <me@ofabio.net>,
+    Riccardo Massari <me@maxdrift.tk>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+================================================================================
