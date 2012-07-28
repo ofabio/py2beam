@@ -10,8 +10,7 @@ try:
     from py2beam.frontend.scanner import PyScanner
     from py2beam.frontend.parser import PyParser
     from py2beam.code_generator.composer import Composer
-except Exception as e:
-    print ">>", e
+except:
     from src.config import *
     from src.frontend.scanner import PyScanner
     from src.frontend.parser import PyParser
@@ -39,7 +38,7 @@ def main(argv=None):
     output = None
     try:
         try:
-            opts, args = getopt.getopt(argv[1:], "ehoi:v", ["help", "output=", "execute", "initialize"])
+            opts, args = getopt.getopt(argv[1:], "ieho:v", ["help", "output=", "execute", "initialize"])
         except getopt.error, msg:
             raise Usage(msg)
         # option processing
@@ -60,13 +59,14 @@ def main(argv=None):
         
         if args == []:
             raise Usage(help_message)
-        
         for arg in args:
             out_path, file_ = os.path.split(arg)
             filename, ext = os.path.splitext(file_)
             if output:
                 out_path, out_file = os.path.split(output)
                 filename, out_ext = os.path.splitext(out_file)
+                if filename == "":
+                    filename = os.path.splitext(file_)[0]
             code = ""
             with open(arg, 'r') as source:
                 for l in source:

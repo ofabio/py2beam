@@ -1,20 +1,28 @@
 ================================================================================
-                               P  y  2  B  e  a  m
+                               p  y  2  b  e  a  m
 ================================================================================
 
-    Py2Beam is a python compiler for the Erlang Virtual Machine BEAM.
+    Py2beam is a python compiler for the Erlang Virtual Machine BEAM.
 
 ================================================================================
-    I  N  S  T  A  L  L
+    P  R  E  R  E  Q  U  I  S  I  T  E  S
 ================================================================================
 
-    1. Unpack the source zip.   
-    2. `cd` into to the new directory 
+    1. Python Virtual Machine [0].
+    2. Erlang Virtual Machine [1].
+
+================================================================================
+    I  N  S  T  A  L  L  (Unix only)
+================================================================================
+
+    1. Unpack the source zip.
+    2. `cd` into to the new directory
     3. Run `make` to build some erlang dependencies
     4. Run `sudo make install` to install py2beam in /usr/local/bin.
 
     Optional:
     5. Run `make test` to run tests.
+    6. Use `examples` directory to test some pieces of code.
 
 ================================================================================
     U  S  E
@@ -24,6 +32,17 @@
 
     Optional:
     2. Run `py2beam.py -h` to show a quick help.
+    3. To run an Erlang beam from the shell:
+        3.1. `cd` into to the beam directory
+        3.2. Use the command:
+            `erl -pa ./ -run <beamname> module -run init stop -noshell`
+            (<beamname> is the beam name without extension)
+
+================================================================================
+    U  N  I  N  S  T  A  L  L
+================================================================================
+
+    1. Run `sudo make distclean` to remove py2beam from /usr/local/bin.
 
 ================================================================================
     R  E  S  O  U  R  C  E  S
@@ -55,7 +74,7 @@
     L  I  C  E  N  S  E
 ================================================================================
 
-    Py2Beam - Python compiler for the Erlang Virtual Machine BEAM, 
+    Py2beam - Python compiler for the Erlang Virtual Machine BEAM, 
     Copyright (C) 2012-2013, Fabio Pricoco <me@ofabio.net>,
     Riccardo Massari <me@maxdrift.tk>
 

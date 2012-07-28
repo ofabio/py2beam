@@ -49,4 +49,4 @@ test: build_examples
 
 build_examples:
 	@for i in $(EXAMPLES); do \
-	$(PY) $(SDIR)/py2beam.py $$i; done
+	$(PY) py2beam.py $$i; done
