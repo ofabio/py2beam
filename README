@@ -75,7 +75,7 @@
 ================================================================================
 
     Py2beam - Python compiler for the Erlang Virtual Machine BEAM, 
-    Copyright (C) 2012-2013, Fabio Pricoco <me@ofabio.net>,
+    Copyright (C) 2012-2013, Fabio Pricoco <fabio.pricoco@gmail.com>,
     Riccardo Massari <me@maxdrift.tk>
 
     This program is free software: you can redistribute it and/or modify
